@@ -1,0 +1,266 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import BottomNav from '../components/BottomNav.jsx';
+import { categories, productsByCategory } from '../services/homeData.js';
+
+const GroceryApp = () => {
+  const navigate = useNavigate();
+
+  // ---- State ----
+  const [activeCategory, setActiveCategory] = useState(categories[0]); // Default 'Vegetables'
+  const [favorites, setFavorites] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const links = [
+      "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap",
+      "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    ];
+    const added = links.map((href) => {
+      const l = document.createElement("link");
+      l.rel = "stylesheet";
+      l.href = href;
+      document.head.appendChild(l);
+      return l;
+    });
+    return () => added.forEach((l) => l.remove());
+  }, []);
+
+  const toggleFavorite = (id) =>
+    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const handleAddToCart = (name) => {
+    navigate('/Cart');
+  };
+
+  // ---- Star renderer ----
+  const renderStars = (rating) =>
+    Array.from({ length: 5 }).map((_, i) => (
+      <i
+        key={i}
+        className={
+          i < rating
+            ? "fa-solid fa-star"
+            : "fa-regular fa-star text-gray-300"
+        }
+      />
+    ));
+
+  // Get products for the active category from homeData.js and filter by search
+  const currentProducts = (productsByCategory[activeCategory] || []).filter((p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+      `}</style>
+
+      <div className="bg-gray-100 flex justify-center items-start min-h-screen text-gray-800 antialiased font-sans select-none">
+        <div className="relative w-full max-w-[430px] h-[100dvh] sm:h-[932px] max-h-screen bg-white shadow-2xl overflow-hidden flex flex-col justify-between">
+          
+          {/* ---------- Top Header ---------- */}
+          <header className="bg-gradient-to-b from-[#F8CB46] to-[#F8CB46] text-black pt-4 pb-5 px-4 rounded-b-[28px] shadow-sm shrink-0 z-10">
+            
+            {/* Delivery Info + Profile */}
+            <div className="flex justify-between items-center mt-1 px-1">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-black text-[24px] animate-bounce">location_on</span>
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-medium text-black/70 leading-tight">
+                    Delivery in
+                  </span>
+                  <span className="text-[24px] font-black tracking-tight leading-none mt-0.5">
+                    8 Minutes
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end">
+                <button
+                  onClick={() => navigate('/account')}
+                  aria-label="User profile"
+                  className="w-9 h-9 rounded-full bg-[#755b00] flex items-center justify-center active:scale-95 transition-transform"
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-white text-[20px]">person</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mt-4 relative">
+              <div className="relative flex items-center">
+                <i className="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={`Search in ${activeCategory}...`}
+                  className="w-full h-10 pl-10 pr-9 rounded-full text-sm bg-white text-gray-800 placeholder-gray-400 focus:outline-none shadow-md border-0"
+                />
+                <button
+                  aria-label="Voice search"
+                  className="absolute right-3.5 text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  <i className="fa-solid fa-microphone text-sm"></i>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* ---------- Scrollable Content ---------- */}
+          <main className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 pb-24 space-y-4">
+            
+            {/* Category Tabs (Top Navigation) */}
+            <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-1">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setActiveCategory(cat);
+                    setSearchQuery(""); // Reset search when switching categories
+                  }}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-lg text-[13px] font-bold transition-colors ${
+                    activeCategory === cat
+                      ? "bg-[#F8CB46] text-black shadow-sm"
+                      : "bg-white text-gray-500 hover:bg-gray-50"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </nav>
+
+            {/* Products Section */}
+            <section className="pt-1">
+              <div className="flex items-baseline justify-between mb-2 px-1">
+                <h2 className="text-[16px] font-extrabold text-gray-900 tracking-tight">
+                  {activeCategory}
+                </h2>
+                <span className="text-[11px] text-gray-500 font-medium">
+                  {currentProducts.length} items
+                </span>
+              </div>
+
+              {currentProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <span className="material-symbols-outlined text-[32px] text-gray-400">search_off</span>
+                  </div>
+                  <h3 className="text-[16px] font-bold text-gray-800">No products found</h3>
+                  <p className="text-[13px] text-gray-500 mt-1 max-w-[200px]">
+                    Try searching for something else.
+                  </p>
+                </div>
+              ) : (
+                /* Horizontal Scroll Rows (Chunking array into rows of 10) */
+                Array.from({ length: Math.ceil(currentProducts.length / 10) }).map((_, rowIndex) => (
+                  <div key={rowIndex} className="flex overflow-x-auto no-scrollbar gap-2.5 mt-2 pb-1">
+                    {currentProducts.slice(rowIndex * 10, rowIndex * 10 + 10).map((product) => (
+                      <article
+                        key={product.id}
+                        className="flex flex-col bg-white rounded-xl p-1.5 shadow-sm relative flex-shrink-0 w-[31%]"
+                      >
+                        {/* Image & Heart Button */}
+                        <div className="relative bg-gray-50 rounded-lg overflow-hidden aspect-square w-full">
+                          <img
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            src={product.image}
+                          />
+                          <button
+                            aria-label={`Add ${product.name} to favourites`}
+                            onClick={() => toggleFavorite(product.id)}
+                            className={`absolute top-1.5 right-1.5 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center shadow-sm ${
+                              favorites[product.id] ? "text-red-500" : "text-gray-400"
+                            }`}
+                          >
+                            <i className={`text-[10px] ${favorites[product.id] ? "fa-solid fa-heart" : "fa-regular fa-heart"}`}></i>
+                          </button>
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex flex-col flex-1 mt-1.5 px-0.5">
+                          <div className="flex items-center space-x-0.5 text-[8px] text-[#E68A2E]">
+                            {renderStars(product.rating || 4)}
+                          </div>
+                          <h3 className="text-[11px] font-semibold text-gray-800 leading-tight mt-0.5 truncate">
+                            {product.name}
+                          </h3>
+                          <div className="flex items-center justify-between mt-1 gap-1">
+                            <span className="text-[10px] font-bold text-gray-800">
+                              {product.price}
+                            </span>
+                            <button
+                              onClick={() => handleAddToCart(product.name)}
+                              className="flex items-center justify-center px-1.5 py-0.5 rounded border border-[#F8CB46] bg-[#F8CB46]/10 text-gray-800 text-[9px] font-bold active:scale-95 transition-transform"
+                            >
+                              ADD
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ))
+              )}
+            </section>
+          </main>
+
+          {/* ---------- Bottom Navigation ---------- */}
+          <BottomNav />
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default GroceryApp;
+
+
+
+
+
+ {!isEmpty && (
+              <div className="sticky bottom-0 z-40 bg-[#f8f9ff]/95 backdrop-blur-md px-4 py-3 shadow-[0_-4px_16px_rgba(253,214,2,0.12)]">
+                <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] leading-[14px] text-[#404943] tracking-wider uppercase font-semibold">
+                      Total to Pay
+                    </span>
+                    <span className="text-[24px] tracking-tight font-bold text-[#121c2a] leading-none">
+                      ₹ {inr(animatedTotal)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handlePay}
+                    disabled={payState !== "idle" || isEmpty || anyBusy}
+                    className={`flex-1 max-w-[200px] h-11 bg-[#F8CB46] text-black rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-[#e0b530] active:scale-[0.98] transition-all disabled:opacity-70 ${payState === "idle" && !anyBusy ? "pay-shine" : ""}`}
+                  >
+                    {payState === "idle" && (
+                      <>
+                        <span>Proceed to Pay</span>
+                        <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                      </>
+                    )}
+                    {payState === "loading" && (
+                      <>
+                        <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                        <span>Securing...</span>
+                      </>
+                    )}
+                    {payState === "done" && (
+                      <>
+                        <span className="material-symbols-outlined check-pop text-[20px]">check_circle</span>
+                        <span>Redirecting</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}

@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-green: #F8CB46;
+  --color-verify-green: #F8CB46;
+  --color-keypad-bg: #f3f4f6;
+  --color-keypad-text: #111827;
+  --color-subtext-gray: #6b7280;
+  --font-sans: 'Gilroy', sans-serif;
+}
+
+.btn-green-theme { background-color: #F8CB46; }
+.btn-green-theme:active { background-color: #F8CB46; }
+
+.active-dot { background-color: #F8CB46; }
+
+body { background-color: #ffffff; font-family: 'Gilroy', sans-serif; }
+
+.material-symbols-outlined { font-size: 16px !important; }
+
+.fav-icon { font-size: 24px !important; }
