@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
 
     addresses: [
       {
+        label: String, 
         houseNo: String,
         floor: String,
         area: String,

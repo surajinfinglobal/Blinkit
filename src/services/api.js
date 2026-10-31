@@ -19,19 +19,3 @@ export async function registerUser(userData) {
   return data
 }
 
-export const addAddressAPI = async (addressData) => {
-  const token = localStorage.getItem('token');
-  const response = await fetch('http://localhost:5000/api/addresses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(addressData),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Address save nahi ho paya');
-  }
-  return response.json();
-};

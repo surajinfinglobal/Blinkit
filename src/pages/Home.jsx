@@ -1,16 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import BottomNav from '../components/BottomNav.jsx';
+import LocationChip from '../components/LocationChip.jsx';
 import { categories, productsByCategory } from '../services/homeData.js';
 import { addToCart } from "../services/cartService";
-// import CurrentLocation from '../components/CurrentLocation';
+import { addAddressAPI,getAddressesAPI} from '../services/address.js';
+// import CurrentLocation from '../components/CurrentLocation';getAddressesAPI 
 
 /* ================= HELPERS ================= */
 
 const MIN_ETA = 6;
 const MAX_ETA = 20;
 const randomEta = () => Math.floor(Math.random() * (MAX_ETA - MIN_ETA + 1)) + MIN_ETA;
+
+  const EMPTY_ADDRESS_FORM = {
+    house: "",
+    apartment: "",
+    area: "",
+    landmark: "",
+    city: "",
+    pincode: "",
+  };
 
 // Address storage (localStorage) – checkout page bhi yahi se padh sakta hai
 const ADDR_KEY = "grocery_addresses";
@@ -202,6 +212,24 @@ const AutoCarousel = ({ items, onAdd }) => {
     </div>
   );
 };
+const AddressField = ({ label, required, error, children }) => (
+  <label className="block">
+    <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-gray-600">
+      {label}
+      {required ? (
+        <span className="text-red-500">*</span>
+      ) : (
+        <span className="font-normal text-gray-400">(optional)</span>
+      )}
+    </span>
+    {children}
+    {error && (
+      <span role="alert" className="mt-1 block text-[10px] text-red-500">
+        {error}
+      </span>
+    )}
+  </label>
+);
 
 const GroceryApp = () => {
   const navigate = useNavigate();
@@ -222,6 +250,8 @@ const GroceryApp = () => {
   const [newLine, setNewLine] = useState("");
   const [newPincode, setNewPincode] = useState("");
   const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const selectedAddress = addresses.find((a) => a.id === selectedId) || addresses[0] || null;
   const selectedLocation = selectedAddress;
@@ -229,9 +259,27 @@ const GroceryApp = () => {
     ? `${selectedAddress.label ? selectedAddress.label + " · " : ""}${selectedAddress.line || ""}${selectedAddress.pincode ? " - " + selectedAddress.pincode : ""}`
     : "";
 
+
+
+  const [form, setForm] = useState(EMPTY_ADDRESS_FORM);
+const updateField = (field, value) => {
+  const cleanValue = field === "pincode"
+    ? value.replace(/\D/g, "").slice(0, 6)
+    : value;
+
+  setForm((prev) => ({ ...prev, [field]: cleanValue }));
+  
+  setFieldErrors((prev) => {
+    if (!prev[field]) return prev; // Agar koi error nahi, toh naya object mat banao
+    const next = { ...prev };
+    delete next[field];
+    return next;
+  });
+};
+
   useEffect(() => {
-    console.log("Saved addresses:", addresses);
-    console.log("Selected address:", selectedAddress);
+    // console.log("Saved addresses:", addresses);
+    // console.log("Selected address:", selectedAddress);
   }, [addresses, selectedAddress]);
 
   // ---- Delivery ETA (random, location change hone par dobara random) ----
@@ -338,7 +386,7 @@ const GroceryApp = () => {
       });
       return true;
     } catch (error) {
-      console.error('Add to cart error:', error);
+      // console.error('Add to cart error:', error);
       showToast('Product add nahi ho paya.', { type: "error" });
       return false;
     }
@@ -349,6 +397,7 @@ const GroceryApp = () => {
     setSheetView("list");
     setLocError("");
     setFormError("");
+    setFieldErrors({}); 
     setShowSheet(true);
   };
   const closeSheet = () => {
@@ -419,48 +468,88 @@ const deleteAddress = (id) => {
     );
   };
 
-  const saveNewAddress =async() => {
-    if (newLine.trim().length < 5) {
-    setFormError("Poora address likho (house no., area, city)");
+
+const fetchAddresses = async ()=>{
+  try {
+    const savedAddresses = await getAddressesAPI();
+    console.log('Saved addresses:', savedAddresses);
+    } catch (error) {
+    console.error('Fetch addresses error:', error);
+  }
+}
+
+useEffect(() => {
+  fetchAddresses();
+}, []);
+const saveNewAddress = async () => {
+
+  const errors = {};
+  if (!form.house.trim()) errors.house = "House / Flat number required hai";
+  if (!form.area.trim()) errors.area = "Area / Street required hai";
+  if (!form.city.trim()) errors.city = "City required hai";
+  if (!/^\d{6}$/.test(form.pincode)) errors.pincode = "6-digit valid pincode daalo";
+
+  if (Object.keys(errors).length > 0) {
+    setFieldErrors(errors);
+    setFormError("Kuch fields galat hain, check karein.");
     return;
   }
-  if (!/^\d{6}$/.test(newPincode)) {
-    setFormError("6-digit valid pincode daalo");
-    return;
-  }
-  
-  // CHANGE: Naya object with ID, Label, Line, Pincode
-  const addr = {
-    id: `a${Date.now()}`, // Unique ID
-    label: newLabel,      // Home/Work/Other
-    line: newLine.trim(),
-    pincode: newPincode,
-  };
-  try{
-    setLoadingAddress(true);
-    setFormError("");
-    await addAddressAPI(
-      {
-      label: addr.label,
-      line: addr.line,
-      pincode: addr.pincode,
-    }
-    );
-    setAddresses((prev) => [...prev, addr]); // Array mein add
-  setSelectedId(addr.id);                  // Automatically select
-  setNewLine("");
-  setNewPincode("");
-  setNewLabel("Home");
+
+  setFieldErrors({});
   setFormError("");
-  setShowSheet(false);
-  }
-  catch (error) {
+
+  const addressPayload = {
+    label: newLabel,
+    houseNo: form.house.trim(),
+    floor: form.apartment.trim(), 
+    area: form.area.trim(),
+    landmark: form.landmark.trim(),
+    city: form.city.trim(),
+    pincode: form.pincode,
+  };
+
+  // Console mein pura address print karo
+  // console.log("📤 Sending Address to API:", addressPayload);
+
+  try {
+    setSaving(true);
+
+    // API Call
+    const response = await addAddressAPI(addressPayload);
+    // console.log(" API Response:", response);
+
+    const saved = response.address;
+    // console.log(" Address saved in DB:", saved);
+
+    // ---- UI ke liye local address object ----
+    const line = `${form.house}, ${form.area}, ${form.city} - ${form.pincode}`;
+
+    const addr = {
+      id: saved?._id || `a${Date.now()}`,
+      label: newLabel,
+      line,
+      pincode: form.pincode,
+    };
+
+    // Local state mein add karo aur select karo
+    setAddresses((prev) => [...prev, addr]);
+    setSelectedId(addr.id);
+
+    // Form reset
+    setForm(EMPTY_ADDRESS_FORM);
+    setNewLabel("Home");
+    setShowSheet(false);
+
+    showToast("Address saved successfully");
+  } catch (error) {
+    // console.error("❌ Save address error:", error);
     setFormError(error.message || "Address save nahi ho paya");
-    showToast(error.message, { type: "error" });
+    showToast(error.message || "Address save nahi ho paya", { type: "error" });
   } finally {
-    setLoadingAddress(false);
-  
+    setSaving(false);
+  }
 };
+
 
   // ---- Star renderer ----
   const renderStars = (rating) =>
@@ -485,6 +574,7 @@ const deleteAddress = (id) => {
 
   const inputCls =
     "w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F8CB46] focus:ring-1 focus:ring-[#F8CB46] transition";
+
 
   return (
     <>
@@ -619,7 +709,7 @@ const deleteAddress = (id) => {
         }
       `}</style>
 
-      <div className="bg-gray-100 flex justify-center items-start min-h-screen text-gray-800 antialiased font-sans select-none">
+      <div data-marker="HOME-ROOT" className="bg-gray-100 flex justify-center items-start min-h-screen text-gray-800 antialiased font-sans select-none">
         <div className="relative w-full max-w-[auto] h-[100dvh] sm:h-[932px] max-h-screen bg-white shadow-2xl overflow-hidden flex flex-col justify-between">
 
           {/* ---------- Top Header ---------- */}
@@ -651,23 +741,7 @@ const deleteAddress = (id) => {
             </div>
 
             {/* Row 2: Location chip */}
-            <button
-              type="button"
-              onClick={openSheet}
-              aria-label="Select delivery location"
-              className="header-in chip-shine relative overflow-hidden mt-3 max-w-70 flex items-center gap-2 bg-black/10 hover:bg-black/15 rounded-full pl-2.5 pr-3 py-1.5 text-left transition active:scale-[0.98]"
-              style={{ animationDelay: "140ms" }}
-            >
-              <span className="material-symbols-outlined pin-drop text-[20px] text-black shrink-0">location_on</span>
-              <span className="flex-1 min-w-0 text-[12px] font-semibold text-black/85 truncate">
-                {selectedAddress
-                  ? `${selectedAddress.label} · ${selectedAddress.line}`
-                  : "Select your location"}
-              </span>
-              <span className={`material-symbols-outlined text-[18px] text-black/80 shrink-0 transition-transform duration-300 ${showSheet ? "rotate-180" : ""}`}>
-                expand_more
-              </span>
-            </button>
+            <LocationChip />
 
             {/* Row 3: Search bar */}
             <div className="header-in mt-3 relative flex items-center transition-transform duration-200 focus-within:scale-[1.015]" style={{ animationDelay: "200ms" }}>
@@ -801,8 +875,6 @@ const deleteAddress = (id) => {
             </section>
           </main>
 
-          {/* ---------- Bottom Navigation ---------- */}
-          <BottomNav />
 
           {/* ================= TOAST (portal: BottomNav ke upar) ================= */}
           {toast &&
@@ -973,7 +1045,7 @@ const deleteAddress = (id) => {
 
                 {/* ---------- ADD VIEW ---------- */}
                 {sheetView === "add" && (
-                  <div className="space-y-3">
+                  <fieldset  className="m-0 min-w-0 space-y-3 border-0 p-0">
                     {/* Label chips */}
                     <div className="flex gap-2">
                       {["Home", "Work", "Other"].map((l) => (
@@ -981,7 +1053,7 @@ const deleteAddress = (id) => {
                           key={l}
                           type="button"
                           onClick={() => setNewLabel(l)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition ${
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${
                             newLabel === l
                               ? "bg-[#F8CB46] border-[#F8CB46] text-black"
                               : "bg-white border-gray-200 text-gray-500"
@@ -993,24 +1065,79 @@ const deleteAddress = (id) => {
                       ))}
                     </div>
 
-                    <textarea
-                      rows={3}
-                      value={newLine}
-                      onChange={(e) => setNewLine(e.target.value)}
-                      placeholder="House no., street, area, city"
-                      className={`${inputCls} resize-none`}
-                      aria-label="Full address"
-                    />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={newPincode}
-                      onChange={(e) => setNewPincode(e.target.value.replace(/\D/g, ""))}
-                      placeholder="Pincode"
-                      className={inputCls}
-                      aria-label="Pincode"
-                    />
+                    <AddressField label="House / Flat no." required error={fieldErrors.house}>
+                      <input
+                        key="house-input"
+                        type="text"
+                        value={form.house}
+                        onChange={(e) => updateField("house", e.target.value)}
+                        placeholder="e.g. D-96, Flat 402"
+                        autoComplete="address-line1"
+                        className={`${inputCls} ${fieldErrors.house ? "!border-red-400" : ""}`}
+                      />
+                    </AddressField>
+
+                    <AddressField label="Apartment / Society">
+                      <input
+                      key="Apartment-input"
+                        type="text"
+                        value={form.apartment}
+                        onChange={(e) => updateField("apartment", e.target.value)}
+                        placeholder="e.g. Shree Residency"
+                        autoComplete="address-line2"
+                        className={inputCls}
+                      />
+                    </AddressField>
+
+                    <AddressField label="Area / Street" required error={fieldErrors.area}>
+                      <input
+                      key="area-input"
+                        type="text"
+                        value={form.area}
+                        onChange={(e) => updateField("area", e.target.value)}
+                        placeholder="e.g. Kamla Nagar"
+                        autoComplete="address-level3"
+                        className={`${inputCls} ${fieldErrors.area ? "!border-red-400" : ""}`}
+                      />
+                    </AddressField>
+
+                    <AddressField label="Landmark">
+                      <input
+                      key="landmark-input"
+                        type="text"
+                        value={form.landmark}
+                        onChange={(e) => updateField("landmark", e.target.value)}
+                        placeholder="e.g. Near North Campus"
+                        className={inputCls}
+                      />
+                    </AddressField>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <AddressField label="City" required error={fieldErrors.city}>
+                        <input
+                        key="city-input"
+                          type="text"
+                          value={form.city}
+                          onChange={(e) => updateField("city", e.target.value)}
+                          placeholder="e.g. New Delhi"
+                          autoComplete="address-level2"
+                          className={`${inputCls} ${fieldErrors.city ? "!border-red-400" : ""}`}
+                        />
+                      </AddressField>
+                      <AddressField label="Pincode" required error={fieldErrors.pincode}>
+                        <input
+                        key="pincode-input"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={form.pincode}
+                           onChange={(e) => updateField("pincode", e.target.value)}
+                          placeholder="110007"
+                          autoComplete="postal-code"
+                          className={`${inputCls} ${fieldErrors.pincode ? "!border-red-400" : ""}`}
+                        />
+                      </AddressField>
+                    </div>
 
                     {formError && (
                       <p role="alert" className="text-[11px] text-red-500">
@@ -1021,11 +1148,20 @@ const deleteAddress = (id) => {
                     <button
                       type="button"
                       onClick={saveNewAddress}
-                      className="w-full bg-[#F8CB46] active:scale-[0.99] transition text-black font-bold text-[13px] tracking-wider py-3.5 rounded-xl"
+                      disabled={saving}
+                      aria-busy={saving}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F8CB46] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-70"
                     >
-                      SAVE &amp; USE THIS ADDRESS
+                      {saving ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                          SAVING ADDRESS...
+                        </>
+                      ) : (
+                        <>SAVE &amp; USE THIS ADDRESS</>
+                      )}
                     </button>
-                  </div>
+                  </fieldset>
                 )}
               </div>
             </div>,
@@ -1036,8 +1172,5 @@ const deleteAddress = (id) => {
     </>
   );
 };
-
-
-}
 
 export default GroceryApp;

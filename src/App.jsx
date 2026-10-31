@@ -22,7 +22,7 @@ import UserProfile from './pages/UserProfile.jsx'
 import TrackOrder from './pages/TrackOrder.jsx'
 import Deleverd from './pages/Deleverd.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
-import CurrentLocation from './components/CurrentLocation';
+import LocationChip from './components/LocationChip';
 
 function AppLayout() {
   const location = useLocation()
@@ -51,7 +51,7 @@ function AppLayout() {
         <Route element={<ProtectedRoute />}>
           <Route path="/home" element={<Home />} />
           <Route path="PulseSplash" element={<PulseSplash/>}/>
-          <Route path="/location" element={<CurrentLocation />}/>
+          <Route path="/location" element={<LocationChip />}/>
           <Route path="/cart" element={<Cart />} />
           <Route path="/MyOrders" element={<MyOrders />} />
           <Route path="/wishlist" element={<Wishlist />} />
