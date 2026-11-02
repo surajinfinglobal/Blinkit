@@ -4,6 +4,11 @@ import { useNavigate } from "react-router-dom";
 import LocationChip from '../components/LocationChip.jsx';
 import PulseSplash from '../components/PulseSplash.jsx';
 import {
+  getSelectedAddress,
+  setSelectedAddress,
+  subscribeToSelectedAddress,
+} from "../services/selectedAddress.js";
+import {
   getCart,
   updateCartQuantity,
   removeFromCart,
@@ -11,7 +16,7 @@ import {
 
 /* ================= CONFIG ================= */
 
-const HOME_ROUTE = "/";                    // empty cart se "Start shopping" yahan jayega
+const HOME_ROUTE = "/home";                    // empty cart se "Start shopping" yahan jayega
 const CHECKOUT_ROUTE = "/CheckoutPayment";
 
 const HANDLING_FEE = 15;
@@ -57,21 +62,17 @@ const loadJSON = (key, fallback) => {
     return fallback;
   }
 };
-const saveJSON = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* ignore */
-  }
-};
-
 const readAddressState = () => {
   const addrs = loadJSON(ADDR_KEY, DEFAULT_ADDRESSES);
   const selId = loadJSON(SEL_KEY, "a1");
-  const list = Array.isArray(addrs) && addrs.length ? addrs : [];
+  const savedAddresses = Array.isArray(addrs) && addrs.length ? addrs : [];
+  const selected = getSelectedAddress(savedAddresses.find((address) => address.id === selId) || savedAddresses[0] || null);
+  const list = selected && !savedAddresses.some((address) => address.id === selected.id)
+    ? [selected, ...savedAddresses]
+    : savedAddresses;
   return {
     addresses: list,
-    selected: list.find((a) => a.id === selId) || list[0] || null,
+    selected: selected || list.find((address) => address.id === selId) || list[0] || null,
   };
 };
 
@@ -261,6 +262,19 @@ const CartScreen = () => {
     };
   }, []);
 
+  useEffect(() => subscribeToSelectedAddress((address) => {
+    if (address) {
+      setAddrState((current) => ({
+        addresses: current.addresses.some((entry) => entry.id === address.id)
+          ? current.addresses.map((entry) => (entry.id === address.id ? address : entry))
+          : [address, ...current.addresses],
+        selected: address,
+      }));
+    } else {
+      setAddrState(readAddressState());
+    }
+  }), []);
+
   // Applied coupon ko session mein rakho (checkout se wapas aane par bhi rahe)
   useEffect(() => {
     try {
@@ -393,7 +407,8 @@ const CartScreen = () => {
 
   // ---- Location ----
   const selectAddress = (id) => {
-    saveJSON(SEL_KEY, id);
+    const address = addresses.find((entry) => entry.id === id) || null;
+    setSelectedAddress(address);
     setAddrState(readAddressState());
     setShowSheet(false);
   };

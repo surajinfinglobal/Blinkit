@@ -23,6 +23,8 @@ app.use('/api/user', require('./routes/userRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api', addressRoutes);
+app.use("/api", require("./routes/distance"));
+app.use("/api", require("./routes/orderRoutes"));
 
 app.use('/api/auth', authRoutes)
 async function startServer() {

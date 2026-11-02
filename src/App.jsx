@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-// import { CartProvider } from './context/CartContext';
+import AdminPanel from '../admin/AdminPanel'
 import StartScreen from './pages/StartScreen.jsx'
 import PulseSplash from './components/PulseSplash.jsx';
 import Landing from './pages/Landing.jsx'
@@ -38,6 +38,7 @@ function AppLayout() {
   return (
     <>
       <Routes>
+        <Route path="/admin" element={<AdminPanel />} />
         <Route path="/" element={<StartScreen/>}/>
         <Route path="/landing" element={<Landing />} />
         <Route path="/delivery" element={<LandingDelivery />} />

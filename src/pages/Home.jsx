@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import LocationChip from '../components/LocationChip.jsx';
 import { categories, productsByCategory } from '../services/homeData.js';
 import { addToCart } from "../services/cartService";
-import { addAddressAPI,getAddressesAPI} from '../services/address.js';
+import { getDistanceAPI } from "../services/distanceService.js";
+import { addAddressAPI,getAddressesAPI} from '../services/addressService.js';
+import { setSelectedAddress, subscribeToSelectedAddress } from "../services/selectedAddress.js";
 // import CurrentLocation from '../components/CurrentLocation';getAddressesAPI 
 
 /* ================= HELPERS ================= */
@@ -247,17 +249,31 @@ const GroceryApp = () => {
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
   const [newLabel, setNewLabel] = useState("Home");
-  const [newLine, setNewLine] = useState("");
-  const [newPincode, setNewPincode] = useState("");
+  // const [newLine, setNewLine] = useState("");
+  // const [newPincode, setNewPincode] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const [distance, setDistance] = useState(null);
+const [travelTime, setTravelTime] = useState(null);
+
   const selectedAddress = addresses.find((a) => a.id === selectedId) || addresses[0] || null;
-  const selectedLocation = selectedAddress;
-  const wholeLocationContent = selectedAddress
-    ? `${selectedAddress.label ? selectedAddress.label + " · " : ""}${selectedAddress.line || ""}${selectedAddress.pincode ? " - " + selectedAddress.pincode : ""}`
-    : "";
+  // const selectedLocation = selectedAddress;
+  // const wholeLocationContent = selectedAddress
+  //   ? `${selectedAddress.label ? selectedAddress.label + " · " : ""}${selectedAddress.line || ""}${selectedAddress.pincode ? " - " + selectedAddress.pincode : ""}`
+  //   : "";
+
+  useEffect(() => {
+    if (selectedAddress) {
+      console.log("Selected Location Lat/Lng:", {
+        label: selectedAddress.label,
+        lat: selectedAddress.lat,
+        lng: selectedAddress.lng,
+        line: selectedAddress.line,
+      });
+    }
+  }, [selectedAddress]);
 
 
 
@@ -293,8 +309,31 @@ const updateField = (field, value) => {
     saveJSON(ADDR_KEY, addresses);
   }, [addresses]);
   useEffect(() => {
-    saveJSON(SEL_KEY, selectedAddress?.id ?? null);
-  }, [selectedAddress?.id]);
+    setSelectedAddress(selectedAddress);
+  }, [selectedAddress]);
+
+  useEffect(() => subscribeToSelectedAddress((address) => {
+    if (!address) {
+      setSelectedId(null);
+      return;
+    }
+
+    setAddresses((current) => {
+      const existing = current.find((entry) => entry.id === address.id);
+      if (
+        existing &&
+        existing.label === address.label &&
+        existing.line === address.line &&
+        existing.pincode === address.pincode
+      ) {
+        return current;
+      }
+      return existing
+        ? current.map((entry) => (entry.id === address.id ? address : entry))
+        : [address, ...current];
+    });
+    setSelectedId(address.id);
+  }), []);
 
   // Fonts & Icons load karna
   useEffect(() => {
@@ -393,13 +432,13 @@ const updateField = (field, value) => {
   };
 
   // ================= LOCATION ACTIONS =================
-  const openSheet = () => {
-    setSheetView("list");
-    setLocError("");
-    setFormError("");
-    setFieldErrors({}); 
-    setShowSheet(true);
-  };
+  // const openSheet = () => {
+  //   setSheetView("list");
+  //   setLocError("");
+  //   setFormError("");
+  //   setFieldErrors({}); 
+  //   setShowSheet(true);
+  // };
   const closeSheet = () => {
     if (locating) return;
     setShowSheet(false);
@@ -550,6 +589,50 @@ const saveNewAddress = async () => {
   }
 };
 
+
+const calculateDeliveryDistance = async () => {
+ try {
+    const result = await getDistanceAPI({
+      startLat: 23.0331,
+      startLng: 72.5714,
+      endLat:  22.9734,
+      endLng: 72.5841,
+    });
+
+    console.log("Road distance:", result.distanceKm, "km");
+    console.log("Travel time:", result.durationMinutes, "minutes");
+
+    return result; // Important: result return karo
+  } catch (error) {
+    console.error("Distance error:", error.message);
+    return null;
+  }
+};
+
+// try {
+//     const result = await getDistanceAPI({
+//       // Delivery store ke coordinates
+//       startLat: STORE_LAT,
+//       startLng: STORE_LNG,
+
+//       // Selected customer address ke coordinates
+//       endLat: customerAddress.lat,
+//       endLng: customerAddress.lng,
+const handleCalculateDistance = async () => {
+  const result = await calculateDeliveryDistance();
+
+  if (result) {
+    setDistance(result.distanceKm);
+    setTravelTime(result.durationMinutes);
+  }
+};
+
+  // const result = await calculateDeliveryDistance(selectedAddress);
+
+  // if (result) {
+  //   setDistance(result.distanceKm);
+  //   setTravelTime(result.durationMinutes);
+  // }
 
   // ---- Star renderer ----
   const renderStars = (rating) =>
@@ -724,11 +807,17 @@ const saveNewAddress = async () => {
                 <div className="flex flex-col min-w-0">
                   <span className="text-[11px] font-medium text-black/70 leading-none">Delivery in</span>
                   <span key={eta} className="eta-flip text-[24px] font-black tracking-tight leading-none mt-1">
-                    {eta} Minutes
+                    {/* {eta}  */}
+                    {travelTime}Minutes
                   </span>
                 </div>
               </div>
-
+<button className="header-in ring-pulse shrink-0 w-11 h-11 rounded-full
+material-symbols-outlined text-black text-[26px] leading-none
+ bg-white flex items-center justify-center shadow-md
+  border-2 border-white/80 transition-transform duration-200 hover:scale-105 active:scale-90" onClick={handleCalculateDistance}>
+  Calculate 
+</button>
               <button
                 type="button"
                 onClick={() => navigate("/account")}
@@ -874,6 +963,7 @@ const saveNewAddress = async () => {
               )}
             </section>
           </main>
+          
 
 
           {/* ================= TOAST (portal: BottomNav ke upar) ================= */}

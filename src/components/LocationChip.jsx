@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { addAddressAPI, getAddressesAPI,deleteAddressAPI } from "../services/address.js";
+import { addAddressAPI, getAddressesAPI, deleteAddressAPI } from "../services/addressService.js";
+import {
+  getSelectedAddress,
+  setSelectedAddress,
+  subscribeToSelectedAddress,
+} from "../services/selectedAddress.js";
+
+
 
 const ADDR_KEY = "grocery_addresses";
 const SEL_KEY = "grocery_selected_address";
@@ -61,9 +68,9 @@ const AddressField = ({ label, required, error, children }) => (
   </label>
 );
 
-export default function LocationChip({ 
-  selectedAddress: selectedAddressProp, 
-  showSheet: showSheetProp, 
+export default function LocationChip({
+  selectedAddress: selectedAddressProp,
+  showSheet: showSheetProp,
   openSheet: openSheetProp,
   onClick,
   className = "",
@@ -81,6 +88,7 @@ export default function LocationChip({
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
   const [newLabel, setNewLabel] = useState("Home");
+  const [loading, setLoading] = useState(true);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -105,8 +113,31 @@ export default function LocationChip({
     }
   }, [addresses]);
   useEffect(() => {
-    saveJSON(SEL_KEY, selectedAddress?.id ?? null);
-  }, [selectedAddress?.id]);
+    if (selectedAddress) setSelectedAddress(selectedAddress);
+  }, [selectedAddress]);
+
+  useEffect(() => subscribeToSelectedAddress((address) => {
+    if (!address) {
+      setSelectedId(null);
+      return;
+    }
+
+    setAddresses((current) => {
+      const existing = current.find((entry) => entry.id === address.id);
+      if (
+        existing &&
+        existing.label === address.label &&
+        existing.line === address.line &&
+        existing.pincode === address.pincode
+      ) {
+        return current;
+      }
+      return existing
+        ? current.map((entry) => (entry.id === address.id ? address : entry))
+        : [address, ...current];
+    });
+    setSelectedId(address.id);
+  }), []);
 
   useEffect(() => {
     if (selectedAddressProp?.id) {
@@ -130,7 +161,7 @@ export default function LocationChip({
 
   const selectAddress = (id) => {
     setSelectedId(id);
-    saveJSON(SEL_KEY, id);
+    setSelectedAddress(addresses.find((address) => address.id === id) || null);
     setShowSheet(false);
   };
 
@@ -145,7 +176,7 @@ export default function LocationChip({
           // ignore API error for local/default ids
         }
       }
-       await fetchAddresses();
+      await fetchAddresses();
       const rest = addresses.filter((a) => a.id !== id);
       setAddresses(rest);
       if (selectedId === id) {
@@ -264,54 +295,71 @@ export default function LocationChip({
     );
   };
 
-  const fetchAddresses = async () => {
-  try {
-    const res = await getAddressesAPI();
-    console.log("Saved addresses:", res);
-    const apiAddresses = Array.isArray(res)
-      ? res
-      : res?.addresses || res?.data?.addresses || res?.data || [];
+  const fetchAddresses = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await getAddressesAPI();
+      console.log("Saved addresses:", res);
+      const apiAddresses = Array.isArray(res)
+        ? res
+        : res?.addresses || res?.data?.addresses || res?.data || [];
 
-    const formatted = apiAddresses.map((addr, idx) => ({
-      id: addr._id || addr.id || `api-${idx}`,
-      label: addr.label || addr.type || "Home",
-      line:
-        addr.line ||
-        addr.address ||
-        [
-          addr.houseNo,
-          addr.floor,
-          addr.area,
-          addr.landmark,
-          addr.city,
-        ]
-          .filter(Boolean)
-          .join(", ") +
-          (addr.pincode ? ` - ${addr.pincode}` : ""),
-      pincode: addr.pincode || "",
-    }));
+      const formatted = apiAddresses.map((addr, idx) => {
+        let line = addr.line || addr.address || "";
+        if (!line) {
+          line = [addr.houseNo, addr.floor, addr.area, addr.landmark, addr.city]
+            .filter(Boolean)
+            .join(", ");
+        }
+        let pincode = addr.pincode || "";
+        if (line && pincode && line.includes(pincode)) {
+          // pincode already in line, avoid duplication
+        } else if (line && pincode && !line.includes(`- ${pincode}`) && !line.includes(pincode)) {
+          line = `${line} - ${pincode}`;
+        } else if (line && !pincode) {
+          // try to extract
+        }
+        // clean duplicate pincode
+        if (pincode && (line.match(new RegExp(pincode, 'g')) || []).length > 1) {
+          line = line.replace(new RegExp(`\\s*-?\\s*${pincode}`, 'g'), '').trim() + ` - ${pincode}`;
+        }
+        return {
+          id: addr._id || addr.id || `api-${idx}`,
+          label: addr.label || addr.type || "Home",
+          line,
+          pincode,
+        };
+      });
 
-    // API ko source of truth rakho
-    setAddresses(formatted);
+      const savedSelection = getSelectedAddress();
+      const nextAddresses = savedSelection && !formatted.some((address) => address.id === savedSelection.id)
+        ? [savedSelection, ...formatted]
+        : formatted;
 
-    // Selected address ko valid rakho
-    setSelectedId((prevSelectedId) => {
-      if (
-        prevSelectedId &&
-        formatted.some((addr) => addr.id === prevSelectedId)
-      ) {
-        return prevSelectedId;
-      }
+      // Selected address ko valid rakho
+      setAddresses(nextAddresses);
+      setSelectedId((prevSelectedId) => {
+        if (
+          prevSelectedId &&
+          nextAddresses.some((addr) => addr.id === prevSelectedId)
+        ) {
+          return prevSelectedId;
+        }
 
-      return formatted[0]?.id ?? null;
-    });
-  } catch (error) {
-    console.error("Fetch addresses error:", error);
-  }
-};
+        return nextAddresses[0]?.id ?? null;
+      });
+    } catch (error) {
+      console.error("Fetch addresses error:", error);
+    }
+    finally {
+      setLoading(false);                // success ho ya error, skeleton hat jaye
+    }
+  };
   useEffect(() => {
     fetchAddresses();
   }, []);
+
+
 
   const saveNewAddress = async () => {
     const errors = {};
@@ -342,8 +390,8 @@ export default function LocationChip({
       addressPayload.lat = currentLocation.lat;
       addressPayload.lng = currentLocation.lng;
     }
-   
-    
+
+
 
     console.log("📤 Sending Address to API:", addressPayload);
 
@@ -378,25 +426,49 @@ export default function LocationChip({
     }
   };
 
+
+
   return (
     <>
+      <style>
+        {
+          `@keyframes skeleton { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.skeleton {
+  background: linear-gradient(90deg, rgba(0,0,0,.08) 25%, rgba(0,0,0,.16) 37%, rgba(0,0,0,.08) 63%);
+  background-size: 400% 100%;
+  animation: skeleton 1.4s ease infinite;
+}
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }`
+        }
+      </style>
       <button
         type="button"
         onClick={openSheet}
+        disabled={loading}
+        aria-busy={loading}
         aria-label={ariaLabel}
         className={`header-in chip-shine relative overflow-hidden mt-3 max-w-70 flex items-center gap-2 bg-black/10 hover:bg-black/15 rounded-full pl-2.5 pr-3 py-1.5 text-left transition active:scale-[0.98] ${className}`}
         style={{ animationDelay: "140ms" }}
       >
-        <span className="material-symbols-outlined pin-drop text-[20px] text-black shrink-0">location_on</span>
-        <span className="flex-1 min-w-0 text-[12px] font-semibold text-black/85 truncate">
-          {selectedAddress
-            ? `${selectedAddress.label} · ${selectedAddress.line}`
-            : "Select your location"}
-        </span>
-        <span className={`material-symbols-outlined text-[18px] text-black/80 shrink-0 transition-transform duration-300 ${showSheet ? "rotate-180" : ""}`}>
-          expand_more
-        </span>
+        {loading ? (
+          <>
+            <span className="skeleton h-5 w-5 shrink-0 rounded-full" />
+            <span className="skeleton h-3 w-40 max-w-full flex-1 rounded-full" />
+            <span className="skeleton h-4 w-4 shrink-0 rounded-full" />
+          </>
+        ) : (
+          <>
+            <span className="material-symbols-outlined pin-drop text-[20px] text-black shrink-0">location_on</span>
+            <span className="flex-1 min-w-0 text-[12px] font-semibold text-black/85 truncate">
+              {selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line}` : "Select your location"}
+            </span>
+            <span className={`material-symbols-outlined text-[18px] text-black/80 shrink-0 transition-transform duration-300 ${showSheet ? "rotate-180" : ""}`}>
+              expand_more
+            </span>
+          </>
+        )}
       </button>
+
 
       {showSheet &&
         createPortal(
@@ -481,52 +553,68 @@ export default function LocationChip({
                       Koi saved address nahi hai. Naya add karo.
                     </p>
                   )}
-                  <div className="divide-y divide-gray-100">
-                    {addresses.map((addr, i) => {
-                      const active = selectedAddress?.id === addr.id;
-                      return (
-                        <div
-                          key={addr.id}
-                          onClick={() => selectAddress(addr.id)}
-                          role="radio"
-                          aria-checked={active}
-                          className="list-in flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100"
-                          style={{ animationDelay: `${i * 60}ms` }}
-                        >
-                          <span
-                            className={`material-symbols-outlined text-[22px] mt-0.5 ${active ? "text-[#B8860B]" : "text-gray-400"}`}
-                          >
-                            {LABEL_ICONS[addr.label] || "location_on"}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-semibold text-gray-900">{addr.label}</p>
-                            <p className="text-[11px] text-gray-500 leading-snug mt-0.5 line-clamp-2">
-                              {addr.line}
-                              {addr.pincode ? ` - ${addr.pincode}` : ""}
-                            </p>
+
+
+                  {loading ? (
+                    <div className="divide-y divide-gray-100" aria-busy="true" aria-label="Loading addresses">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="flex items-start gap-3 py-3">
+                          <span className="skeleton h-6 w-6 shrink-0 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <span className="skeleton block h-3 w-16 rounded-full" />
+                            <span className="skeleton block h-3 w-full rounded-full" />
+                            <span className="skeleton block h-3 w-2/3 rounded-full" />
                           </div>
-                          {active && (
-                            <span className="material-symbols-outlined text-[20px] text-[#2E9E4F]">
-                              check_circle
-                            </span>
-                          )}
-                          {!hideDelete && (
-                            <button
-                              type="button"
-                              aria-label={`Delete ${addr.label} address`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteAddress(addr.id);
-                              }}
-                              className="text-gray-300 hover:text-red-500"
-                            >
-                              <span className="material-symbols-outlined text-[20px]">delete</span>
-                            </button>
-                          )}
                         </div>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {addresses.map((addr, i) => {
+                        const active = selectedAddress?.id === addr.id;
+                        return (
+                          <div
+                            key={addr.id}
+                            onClick={() => selectAddress(addr.id)}
+                            role="radio"
+                            aria-checked={active}
+                            className="list-in flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100"
+                            style={{ animationDelay: `${i * 60}ms` }}
+                          >
+                            <span
+                              className={`material-symbols-outlined text-[22px] mt-0.5 ${active ? "text-[#B8860B]" : "text-gray-400"}`}
+                            >
+                              {LABEL_ICONS[addr.label] || "location_on"}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-semibold text-gray-900">{addr.label}</p>
+                              <p className="text-[11px] text-gray-500 leading-snug mt-0.5 line-clamp-2">
+                                {addr.line}
+                                {/* {addr.pincode ? ` - ${addr.pincode}` : ""} */}
+                              </p>
+                            </div>
+                            {active && (
+                              <span className="material-symbols-outlined text-[20px] text-[#2E9E4F]">
+                                check_circle
+                              </span>
+                            )}
+                            {!hideDelete && (
+                              <button
+                                type="button"
+                                aria-label={`Delete ${addr.label} address`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteAddress(addr.id);
+                                }}
+                                className="text-gray-300 hover:text-red-500"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>)}
                 </>
               )}
 
@@ -538,11 +626,10 @@ export default function LocationChip({
                         key={l}
                         type="button"
                         onClick={() => setNewLabel(l)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${
-                          newLabel === l
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${newLabel === l
                             ? "bg-[#F8CB46] border-[#F8CB46] text-black"
                             : "bg-white border-gray-200 text-gray-500"
-                        }`}
+                          }`}
                       >
                         <span className="material-symbols-outlined text-[16px]">{LABEL_ICONS[l]}</span>
                         {l}
@@ -655,9 +742,8 @@ export default function LocationChip({
               className="toast-in pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-[#27313f] py-2 pl-4 pr-3 text-[12px] font-semibold text-[#eaf1ff] shadow-lg"
             >
               <span
-                className={`material-symbols-outlined text-[18px] ${
-                  toast.type === "error" ? "text-[#ff8a80]" : "text-[#F8CB46]"
-                }`}
+                className={`material-symbols-outlined text-[18px] ${toast.type === "error" ? "text-[#ff8a80]" : "text-[#F8CB46]"
+                  }`}
               >
                 {toast.type === "error" ? "error" : "check_circle"}
               </span>
