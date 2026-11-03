@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useToast } from "./Toast";
 
-export default function Header({ onMenu, onSearch }) {
+export default function Header({ onMenu, onSearch, admin, onLogout }) {
   const notify = useToast();
   const [q, setQ] = useState("");
 
@@ -43,12 +43,12 @@ export default function Header({ onMenu, onSearch }) {
         <div className="hidden h-6 w-px bg-surface-container-high sm:block" />
         <div className="flex items-center gap-space-sm">
           <div className="hidden text-right sm:block">
-            <div className="font-label-md text-label-md font-bold leading-tight text-on-surface">Elena Vance</div>
-            <div className="font-label-sm text-label-sm text-on-surface-variant">Lead Dispatcher</div>
+            <div className="font-label-md text-label-md font-bold leading-tight text-on-surface">{admin.name}</div>
+            <div className="font-label-sm text-label-sm capitalize text-on-surface-variant">{admin.role}</div>
           </div>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary transition-transform hover:scale-110">
-            <span className="material-symbols-outlined text-[18px] text-on-primary">person</span>
-          </div>
+          <button type="button" onClick={onLogout} aria-label="Log out" title="Log out" className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors hover:bg-error-container hover:text-error">
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+          </button>
         </div>
       </div>
     </header>

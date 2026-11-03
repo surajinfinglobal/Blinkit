@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav.jsx';
+import {getMyOrdersAPI} from "../services/orderplaceService.js"
 import { addToCart, updateCartQuantity } from '../services/cartService';
 
 /* ================= CONFIG ================= */
@@ -12,8 +13,6 @@ const SUPPORT = {
   email: 'support@example.com',
   whatsapp: '911234567890',
 };
-
-const ORDERS_KEY = 'grocery_orders'; // Checkout yahan naya order push kar sakta hai (neeche reply mein snippet hai)
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -30,12 +29,12 @@ const SORTS = [
 ];
 
 const STEPS = [
-  { label: 'Packed', icon: 'inventory_2' },
-  { label: 'Picked up', icon: 'storefront' },
+  { label: 'Received', icon: 'inventory_2' },
+  { label: 'Packed', icon: 'storefront' },
   { label: 'On the way', icon: 'two_wheeler' },
   { label: 'Doorstep', icon: 'home' },
 ];
-const STAGE_BADGES = ['Preparing order', 'Picked up', 'Out for Delivery', 'At your door'];
+const STAGE_BADGES = ['Order Received', 'Packed', 'Out for Delivery', 'At your door'];
 const BOUNDS = [0, 0.15, 0.4, 0.85, 1]; // progress ke breakpoints
 
 const HELP_ISSUES = [
@@ -46,85 +45,7 @@ const HELP_ISSUES = [
   { id: 'payment', label: 'Payment / refund', icon: 'currency_rupee' },
 ];
 
-/* ================= SEED DATA (API aane tak dummy) ================= */
-
-const IMG = {
-  broccoli: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvXkSj4lSyNMG-TyzyiTFP4Gid6f87CmLku8XqQg1uDtIWrUv2pzYnnmE-42vvkNBXqpCBsPR33qAOe-0IpWkvjat5T98R9QjJR5ioVnNEQX-acw1mcVOrJNTdSYhKcLHCLx-2BmBUxA8YD1gEgDq978KJXAeQQUAaAeiILrgvpuqyhfk1CPZYtumtbhSznhTzCFFLGAeCTajdQK7h1nHik4zsG8olRI13SuqmC9A',
-  tomato: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC-9DeiL62B5CBs8fYsZ7-ln45SU6jLv77yf5rFTmZg78kqVPz69wqueIEKLixcI3GAOK23lGFc7eu6qc4cOsGc5P9y4K3HO4FtJLNPVTtfSp2XBTe109QxAn5NwAi8h5tLoIpiSeH3IC5eVBZgtms1LZoEOMmgW6RgmgRta5DhieyXkJ9gJKabBodVGxWDESA1QleUAeks44nqpadlpO-9OdayW_1sEWeP3oVJLOA',
-  mango: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCgNb3PcVcc9waQebF3bVoyl4n2dn6VrkaMWqj8JKUW4-d9N9IPVjbZjT7DtbXrlkWiO4enjG5PrazYh6BAM30LtSn_BfxP9aUCE-RHPwW8BALZt40TCo5_E4rNt5YHDYWolZs45Co_ROy0cyRUMaxzc5SFJm_ZLIOsFrfw5JQXRmnk_b3Z5H-Di10y0J3QLSWvfMwyM9gXCchTzpvA6nxpKyB5_0v7B6KWQc5VaOw',
-  avocado: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDWi3hX5Rquwrluu_QHorGEOeBCnu24ZmHgr29Kry7xpGDjEdAMY7LKHJzlYhqWUpVrn7H_kNWjvHnRqMTZdO0mXRYybxRoIII4W67t5vBTAraryuyTxAHWTurCLZSimN-yqhXzRAh5o2TpdawvplrKzy3-tniBkyNoff_oB9oJSU1yofHDKBlbfKXnqIKBeo2KmSO8Ax4ub_5-3W01CTrSDRkByh9hHgUpAhFcYAE',
-};
-
-const CATALOG = [
-  { id: 'p-broccoli', name: 'Fresh Farm Broccoli', unit: '1 kg', price: 190, image: IMG.broccoli },
-  { id: 'p-tomato', name: 'Vine Ripe Red Tomatoes', unit: '500 g', price: 40, image: IMG.tomato },
-  { id: 'p-mango', name: 'Alphonso Mangoes', unit: '1 kg', price: 320, image: IMG.mango },
-  { id: 'p-banana', name: 'Bananas', unit: '1 dozen', price: 60, image: null },
-  { id: 'p-apple', name: 'Kashmiri Apples', unit: '500 g', price: 90, image: null },
-  { id: 'p-almond', name: 'Organic Almond Milk', unit: '1 L', price: 180, image: null },
-  { id: 'p-avocado', name: 'Hass Avocados', unit: '2 pcs', price: 150, image: IMG.avocado },
-  { id: 'p-onion', name: 'Onion', unit: '1 kg', price: 35, image: null },
-  { id: 'p-paneer', name: 'Fresh Paneer', unit: '200 g', price: 90, image: null },
-  { id: 'p-spinach', name: 'Spinach', unit: '250 g', price: 25, image: null },
-];
-
-const ADDRESS = 'Home · D-96, Kamla Nagar, near North Campus, DU, New Delhi - 110007';
 const MIN = 60 * 1000;
-const DAY = 24 * 60 * MIN;
-
-const buildSeed = () => {
-  const now = Date.now();
-  const make = (id, { ago, picks, status = 'delivered', mins = 10, discount = 0, rating = null, payment = 'UPI', ...rest }) => {
-    const items = picks.map(([ci, qty]) => ({ ...CATALOG[ci], qty }));
-    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const placedAt = now - ago;
-    return {
-      id, placedAt, status, items, discount, rating, payment, address: ADDRESS,
-      handlingFee: 15,
-      deliveryFee: subtotal >= 200 ? 0 : 30,
-      deliveredInMins: status === 'delivered' ? mins : null,
-      helpRequest: null,
-      rider: { name: 'Rahul K.', rating: 4.8, phone: SUPPORT.phone },
-      otp: String(1000 + Math.floor(Math.random() * 9000)),
-      ...rest,
-    };
-  };
-  return [
-    make('QC-88421', { ago: 12 * MIN, picks: [[0, 1], [1, 2]], status: 'ongoing', deliverAt: now + 50 * MIN }),
-    make('QC-87102', { ago: 1 * DAY + 2 * 60 * MIN, picks: [[2, 1], [3, 1], [4, 1], [8, 1]], mins: 11 }),
-    make('QC-85940', { ago: 16 * DAY, picks: [[5, 1], [6, 1]], mins: 9, rating: { stars: 5, comment: '' } }),
-    make('QC-84711', { ago: 4 * DAY, picks: [[7, 2], [9, 1], [1, 2]], mins: 12, discount: 20, payment: 'Card' }),
-    make('QC-83320', { ago: 7 * DAY, picks: [[0, 2], [8, 1]], mins: 8 }),
-    make('QC-82014', { ago: 10 * DAY, picks: [[3, 2], [4, 2]], mins: 14, payment: 'Cash on Delivery' }),
-    make('QC-80956', { ago: 22 * DAY, picks: [[6, 2], [5, 1]], mins: 10 }),
-    make('QC-79433', { ago: 30 * DAY, picks: [[8, 2]], status: 'cancelled' }),
-  ];
-};
-
-/* ================= HELPERS ================= */
-
-const readJSON = (key, fallback) => {
-  try {
-    const v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-const writeJSON = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* ignore */
-  }
-};
-const loadOrders = () => {
-  const stored = readJSON(ORDERS_KEY, null);
-  if (Array.isArray(stored) && stored.length) return stored;
-  const seed = buildSeed();
-  writeJSON(ORDERS_KEY, seed);
-  return seed;
-};
 
 const inr = (n) => Number(n || 0).toLocaleString('en-IN');
 const subtotalOf = (o) => o.items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -142,13 +63,20 @@ const fmtDate = (ts) => {
   return `${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${t}`;
 };
 
-const getProgress = (o, now) => {
-  const total = Math.max(1, o.deliverAt - o.placedAt);
-  const p = Math.min(1, Math.max(0, (now - o.placedAt) / total));
-  const stage = p < BOUNDS[1] ? 0 : p < BOUNDS[2] ? 1 : p < BOUNDS[3] ? 2 : 3;
-  const frac = (p - BOUNDS[stage]) / (BOUNDS[stage + 1] - BOUNDS[stage]);
-  const pos = Math.min(3, stage + frac);
-  return { p, stage, fill: (pos / 3) * 100 };
+const getProgress = (order) => {
+  const statusMap = {
+    // ongoing stages
+    received: { stage: 0, fill: 0 },
+    packing: { stage: 1, fill: 33 },
+    packed: { stage: 1, fill: 33 },
+    picked_up: { stage: 1, fill: 50 },
+    out_for_delivery: { stage: 2, fill: 75 },
+    delivered: { stage: 3, fill: 100 },
+    cancelled: { stage: 0, fill: 0 },
+  };
+
+  const s = statusMap[order.rawStatus] || statusMap.received;
+  return { stage: s.stage, fill: s.fill };
 };
 
 const fmtCountdown = (ms) => {
@@ -339,7 +267,7 @@ const Tracker = ({ stage, fill }) => (
 /* ================= ORDER CARDS ================= */
 
 const OngoingCard = ({ order, now, index, onTrack, onRider, onCancel }) => {
-  const { stage, fill } = getProgress(order, now);
+  const { stage, fill } = getProgress(order);
   const remaining = Math.max(0, order.deliverAt - now);
   const mins = Math.ceil(remaining / MIN);
 
@@ -584,7 +512,8 @@ const RiderSheet = ({ order, onClose }) => (
 
 const TrackSheet = ({ order, now, onClose, onRider }) => {
   const ongoing = order.status === 'ongoing';
-  const { p, stage } = ongoing ? getProgress(order, now) : { p: 1, stage: 3 };
+  const { stage } = ongoing ? getProgress(order) : { stage: 3 };
+const p = ongoing ? getProgress(order).fill / 100 : 1;
   const remaining = ongoing ? Math.max(0, order.deliverAt - now) : 0;
   const pathRef = useRef(null);
   const [geo, setGeo] = useState({ len: 0, x: 30, y: 140 });
@@ -898,7 +827,10 @@ export default function MyOrders() {
   }, []);
 
   // ---- State ----
-  const [orders, setOrders] = useState(loadOrders);
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [ordersError, setOrdersError] = useState('');
+  const [reloadOrders, setReloadOrders] = useState(0);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('recent');
@@ -934,10 +866,79 @@ export default function MyOrders() {
   };
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  // Orders persist karo
   useEffect(() => {
-    writeJSON(ORDERS_KEY, orders);
-  }, [orders]);
+    let active = true;
+
+    getMyOrdersAPI()
+      .then((apiOrders) => {
+        if (!active) return;
+        const mappedOrders = apiOrders.map((order) => {
+          const parsedPlacedAt = new Date(order.createdAt).getTime();
+          const placedAt = Number.isFinite(parsedPlacedAt) ? parsedPlacedAt : Date.now();
+          const bill = order.billDetails || {};
+          const rider = order.assignedRider;
+
+          const status = {
+            received: 'ongoing',
+            packing: 'ongoing',
+            out_for_delivery: 'ongoing',
+            delivered: 'delivered',
+            cancelled: 'cancelled',
+          }[order.orderStatus] || 'ongoing';
+
+          return {
+            id: order.orderId || order._id,
+            placedAt,
+            deliverAt: placedAt + 30 * MIN,
+            status,
+            rawStatus: order.orderStatus,
+            
+            items: (order.items || []).map((item) => ({
+              id: item.productId,
+              name: item.name,
+              unit: item.unit,
+              price: item.price,
+              image: item.image || null,
+              qty: item.quantity,
+            })),
+            discount: bill.discount || 0,
+            payment: order.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online',
+            address: [order.deliveryAddress?.label, order.deliveryAddress?.line]
+              .filter(Boolean)
+              .join(' · '),
+            handlingFee: bill.handlingFee || 0,
+            deliveryFee: bill.deliveryFee || 0,
+            deliveredInMins:
+              status === 'delivered'
+                ? Math.max(1, Math.round((Date.now() - placedAt) / MIN))
+                : null,
+            helpRequest: null,
+            rider: {
+              name: rider?.name || 'Not assigned',
+              rating: '—',
+              phone: rider?.phone || '',
+            },
+            otp: '----',
+            rating: null,
+            
+          };
+        });
+        setOrders(mappedOrders);
+        console.log(mappedOrders);
+        setOrdersError('');
+      })
+      .catch((error) => {
+        console.error('Failed to load your orders', error);
+        if (active) setOrdersError(error.message || 'Orders load nahi ho sake');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reloadOrders]);
 
   // Live tick (sirf tab jab koi ongoing order ho)
   const hasOngoing = orders.some((o) => o.status === 'ongoing');
@@ -946,20 +947,6 @@ export default function MyOrders() {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [hasOngoing]);
-
-  // Delivery time poora hote hi order "Delivered" ho jaye
-  useEffect(() => {
-    const finished = orders.filter((o) => o.status === 'ongoing' && now >= o.deliverAt);
-    if (!finished.length) return;
-    setOrders((prev) =>
-      prev.map((o) =>
-        finished.some((f) => f.id === o.id)
-          ? { ...o, status: 'delivered', deliveredInMins: Math.max(1, Math.round((o.deliverAt - o.placedAt) / MIN)) }
-          : o
-      )
-    );
-    showToast(`Order #${finished[0].id} delivered 🎉`);
-  }, [now, orders]);
 
   const updateOrder = (id, patch) =>
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...(typeof patch === 'function' ? patch(o) : patch) } : o)));
@@ -1174,7 +1161,27 @@ export default function MyOrders() {
               </section>
 
               {/* ================= EMPTY STATE ================= */}
-              {isOrdersEmpty ? (
+              {loading ? (
+                <div className="flex items-center justify-center gap-3 py-16 text-[14px] font-semibold text-[#5f5e61]">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#f8cb46] border-t-transparent" />
+                  Loading your orders...
+                </div>
+              ) : ordersError ? (
+                <div role="alert" className="fade-up mt-4 flex flex-col items-center px-4 py-12 text-center">
+                  <h2 className="mb-2 text-[18px] font-bold">Orders load nahi ho sake</h2>
+                  <p className="mb-5 max-w-[300px] text-[14px] text-[#5f5e61]">{ordersError}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoading(true);
+                      setReloadOrders((attempt) => attempt + 1);
+                    }}
+                    className="rounded-full bg-[#f8cb46] px-6 py-3 text-[15px] font-bold shadow-sm transition-all active:scale-95"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : isOrdersEmpty ? (
                 <div className="fade-up mt-4 flex flex-col items-center justify-center px-4 py-16 text-center">
                   <div className="floaty mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-[#f8cb46]/20">
                     <span className="material-symbols-outlined text-[48px] text-[#755b00]">receipt_long</span>
@@ -1296,7 +1303,7 @@ export default function MyOrders() {
 
               {/* Help Callout */}
               {!isOrdersEmpty && (
-                <section className="fade-up w-full" style={{ animationDelay: '200ms' }}>
+                <section className="fade-up w-full mb-6" style={{ animationDelay: '200ms' }}>
                   <div className="flex items-center justify-between gap-2 rounded-[20px] bg-white p-4 shadow-sm">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#ffe08f]">

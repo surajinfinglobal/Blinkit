@@ -1,0 +1,45 @@
+const mongoose = require("mongoose");
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
+const Admin = require("./models/Admin");
+const adminEmail = process.env.ADMIN_EMAIL || "suraj.infinglobal@gmail.com";
+const adminPassword = process.env.ADMIN_PASSWORD || "blinkit123";
+
+async function seedAdmin() {
+  try {
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI is required to seed the admin");
+    }
+
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected");
+
+    const existingAdmin = await Admin.findOne({ email: adminEmail });
+
+    if (existingAdmin) {
+      console.log("Admin already exists:", existingAdmin.email);
+      await mongoose.connection.close();
+      process.exit(0);
+    }
+
+    const admin = await Admin.create({
+      name: "Suraj Admin",
+      email: adminEmail,
+      password: adminPassword,
+      role: "superadmin",
+      isActive: true,
+    });
+
+    console.log("Admin created successfully!");
+    console.log("Email:", admin.email);
+
+    await mongoose.connection.close();
+    process.exit(0);
+  } catch (error) {
+    console.error("Error seeding admin:", error.message);
+    process.exit(1);
+  }
+}
+
+seedAdmin();

@@ -5,6 +5,8 @@ const path = require('path')
 const addressRoutes = require('./routes/address');
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const authRoutes = require(path.join(__dirname, 'routes', 'authRoutes'))
+const adminOrderRoutes = require("./routes/adminOrderRoutes");
+
 
 
 const app = express()
@@ -17,7 +19,7 @@ app.use(express.json())
 app.get('/', (req, res) => {
   res.json({ message: 'Blinkit API is running!' })
 })
-
+app.use("/api/admin/auth", require("./routes/adminAuthRoutes"));
 // Protected user routes
 app.use('/api/user', require('./routes/userRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
@@ -25,6 +27,8 @@ app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api', addressRoutes);
 app.use("/api", require("./routes/distance"));
 app.use("/api", require("./routes/orderRoutes"));
+app.use("/api/riders", require("./routes/riderRoutes"));
+app.use("/api/admin", adminOrderRoutes);
 
 app.use('/api/auth', authRoutes)
 async function startServer() {

@@ -1,11 +1,8 @@
 export const NAV_ITEMS = [
-  { id: "overview", label: "Overview", icon: "grid_view" },
-  { id: "unified", label: "Unified Operations", icon: "hub" },
+  { id: "Overview", label: "Overview", icon: "hub" },
   { id: "orders", label: "Orders", icon: "shopping_bag" },
   { id: "customers", label: "Customers", icon: "group" },
-  { id: "fleet", label: "Fleet & Riders", icon: "electric_moped" },
-  { id: "inventory", label: "Inventory", icon: "inventory_2" },
-  { id: "analytics", label: "Analytics", icon: "monitoring" },
+  { id: "fleet", label: "Riders", icon: "electric_moped" },
   { id: "settings", label: "Settings", icon: "tune" },
 ];
 
@@ -51,13 +48,6 @@ export const VEHICLES = [
   { value: "E-Bicycle", label: "E-Bicycle (Short Drop)", icon: "pedal_bike" },
 ];
 
-export const INITIAL_RIDERS = [
-  { id: "r1", name: "Ravi Kumar", phone: "+91 98440 10294", hub: "Hub 04 - Indiranagar", shift: "Morning Peak (6AM - 3PM)", vehicle: "Ather 450X", reg: "KA-03-EM-9921", battery: 82, speed: 28, status: "in-transit", mission: "QC-8849", drops: 24, earned: 1560 },
-  { id: "r2", name: "Manoj Swamy", phone: "+91 97401 55620", hub: "Hub 01 - Koramangala", shift: "Regular (9AM - 6PM)", vehicle: "Ola S1 Air", reg: "KA-04-EX-3021", battery: 95, speed: 0, status: "available", mission: null, drops: 19, earned: 1180 },
-  { id: "r3", name: "Gagan Deep", phone: "+91 99120 44819", hub: "Hub 07 - Whitefield", shift: "Morning Peak (6AM - 3PM)", vehicle: "Hero Optima", reg: "KA-51-AB-1190", battery: 44, speed: 0, status: "break", mission: null, drops: 15, earned: 980 },
-  { id: "r4", name: "M. Zeeshan", phone: "+91 98860 71234", hub: "Hub 07 - Whitefield", shift: "Evening Peak (3PM - 12AM)", vehicle: "Ola S1 Pro", reg: "KA-05-JL-4412", battery: 71, speed: 0, status: "available", mission: null, drops: 11, earned: 720 },
-];
-
 export const INITIAL_ORDERS = [
   { id: "QC-8849", mins: 3, type: "Express", customer: { name: "Ananya Sharma", phone: "+91 98451 22891", address: "12th Main, 4th Cross, Indiranagar" }, items: 6, summary: "Alphonso Mangoes, A2 Milk, Sourdough...", total: 842, payment: "UPI AutoPay", paid: true, status: "in-transit", riderId: "r1", eta: "4m" },
   { id: "QC-8848", mins: 7, type: "Standard", customer: { name: "Vikramaditya Reddy", phone: "+91 97410 88710", address: "Prestige Acropolis, Tower 3, Koramangala" }, items: 12, summary: "Broccoli, Baby Spinach, Avocados...", total: 1940, payment: "Credit Card", paid: false, status: "packing", riderId: null, eta: null },
@@ -75,26 +65,6 @@ export const INITIAL_CUSTOMERS = [
 ];
 
 export const INFO_SECTIONS = {
-  inventory: {
-    eyebrow: "Catalog & Stock",
-    title: "Inventory & Stock Management",
-    description: "Live stock levels, out-of-stock alerts, and restocking queues across all 6 dark stores.",
-    cards: [
-      { label: "Total Tracked SKUs", value: "4,850", sub: "Across 18 micro-categories", tone: "muted" },
-      { label: "Low Stock Warnings", value: "14 SKUs", sub: "Automated PO generated", tone: "primary" },
-      { label: "Critical Stockouts", value: "2 Items", sub: "Supplier re-route active", tone: "error" },
-    ],
-  },
-  analytics: {
-    eyebrow: "Telemetry Intelligence",
-    title: "Analytics & Performance Intelligence",
-    description: "Comprehensive metrics tracking order density, basket size variance, and cohort retention.",
-    cards: [
-      { label: "Orders / Hour (Peak)", value: "214 / hr", sub: "High demand surge", tone: "tertiary" },
-      { label: "Customer Repeat Rate", value: "78.2%", sub: "30-day cohort", tone: "tertiary" },
-      { label: "Avg Order Value (AOV)", value: "₹568", sub: "+8.5% YoY", tone: "tertiary" },
-    ],
-  },
   settings: {
     eyebrow: "System Configuration",
     title: "Operations Configuration & Settings",

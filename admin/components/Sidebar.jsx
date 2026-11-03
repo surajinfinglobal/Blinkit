@@ -1,5 +1,7 @@
 import { NAV_ITEMS } from "../data/adminData";
 
+
+
 export default function Sidebar({ section, onNavigate, open, onClose, hubCap }) {
   return (
     <>
@@ -28,7 +30,6 @@ export default function Sidebar({ section, onNavigate, open, onClose, hubCap }) 
                 <span className="mt-0.5 font-label-sm text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">Ops Admin</span>
               </div>
             </div>
-            <span className="rounded-full bg-tertiary-container px-space-xs py-0.5 font-label-sm text-label-sm font-bold text-on-tertiary-container">PROD</span>
           </div>
 
           <div className="px-space-md py-space-sm">

@@ -66,6 +66,7 @@ const orderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    
     orderId: {
       type: String,
       required: true,
@@ -109,6 +110,11 @@ const orderSchema = new mongoose.Schema(
         "cancelled",
       ],
       default: "received",
+    },
+        assignedRider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Rider",
+      default: null,
     },
 
     billDetails: {

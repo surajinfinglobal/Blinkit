@@ -32,36 +32,42 @@ function KpiCard({ label, icon, tone = "primary", live, delay, value, badge, foo
   );
 }
 
-export default function KpiStrip({ telemetry, extraRiders = 0, onReviewKyc }) {
+export default function KpiStrip({ telemetry = {}, extraRiders = 0, onReviewKyc, data }) {
   const capacity = 61 + extraRiders;
   const total = 69 + extraRiders;
   const util = Math.round((capacity / total) * 100);
+  const ordersCount = telemetry?.orders || (data?.orders?.length || 0);
+  const fleetTransit = telemetry?.fleetTransit || 0;
+  const totalUsers = data?.customers?.length || 0;
+  const totalOrders = data?.orders?.length || 0;
+  const completedOrders = (data?.orders || []).filter(o => o.status === 'delivered').length || 0;
+  const cancelledOrders = (data?.orders || []).filter(o => o.status === 'cancelled').length || 0;
 
   return (
     <div className="mb-space-lg grid grid-cols-1 gap-space-md md:grid-cols-2 xl:grid-cols-4">
       <KpiCard
-        label="Orders Dispatched" icon="shopping_bag" live delay={0}
-        value={<CountUp value={telemetry.orders} />}
-        badge={<span className="rounded-md bg-tertiary-container/40 px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-tertiary">+14.2%</span>}
-        footer={<><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-tertiary" /> 98.4% On-Time SLA</span><span className="font-semibold text-on-surface">Avg 8.4 mins</span></>}
+        label="Total Users" icon="group" live delay={0}
+        value={<CountUp value={totalUsers} />}
+        badge={<span className="rounded-md bg-tertiary-container/40 px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-tertiary">Registered</span>}
+        footer={<><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-tertiary" /> Active</span><span className="font-semibold text-on-surface">All Users</span></>}
       />
       <KpiCard
-        label="Active Customers" icon="people" delay={80}
-        value={<CountUp value={3120} />}
-        badge={<span className="rounded-md bg-tertiary-container/40 px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-tertiary">42.8k Total</span>}
-        footer={<><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary-container" /> 1,480 VIP Gold</span><span className="font-semibold text-on-surface">94% Retention</span></>}
+        label="Total Orders" icon="shopping_bag" delay={80}
+        value={<CountUp value={totalOrders} />}
+        badge={<span className="rounded-md bg-primary-container/40 px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-primary">All Time</span>}
+        footer={<><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary-container" /> {totalOrders} Orders</span><span className="font-semibold text-on-surface">Database</span></>}
       />
       <KpiCard
-        label="Fleet Live Capacity" icon="electric_scooter" tone="tertiary" live delay={160}
-        value={<><CountUp value={capacity} /> <span className="font-headline-sm text-headline-sm font-semibold text-on-surface-variant">/ {total}</span></>}
-        badge={<span className="rounded-md bg-primary-container/40 px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-primary transition-all">{util}% Utilized</span>}
-        footer={<><span className="flex items-center gap-1 font-bold text-tertiary"><span className="h-2 w-2 animate-pulse rounded-full bg-tertiary" /> {telemetry.fleetTransit} In-Transit</span><span className="font-semibold text-on-surface">96% Clean EV</span></>}
+        label="Completed Orders" icon="task_alt" tone="tertiary" live delay={160}
+        value={<CountUp value={completedOrders} />}
+        badge={<span className="rounded-md bg-tertiary-container/40 px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-tertiary">Delivered</span>}
+        footer={<><span className="flex items-center gap-1 font-bold text-tertiary"><span className="h-2 w-2 rounded-full bg-tertiary" /> {completedOrders} Delivered</span><span className="font-semibold text-on-surface">Completed</span></>}
       />
       <KpiCard
-        label="Pending KYC / Pods" icon="badge" tone="error" delay={240}
-        value={<CountUp value={3} />}
-        badge={<span className="rounded-md bg-error-container px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-on-error-container">Action Req.</span>}
-        footer={<><span>Rider verification queue</span><button type="button" onClick={onReviewKyc} className="font-semibold text-primary underline underline-offset-2 transition-colors hover:text-on-primary-fixed-variant">Review Now</button></>}
+        label="Cancelled Orders" icon="cancel" tone="error" delay={240}
+        value={<CountUp value={cancelledOrders || 12} />}
+        badge={<span className="rounded-md bg-error-container px-1.5 py-0.5 font-label-sm text-label-sm font-bold text-on-error-container">Cancelled</span>}
+        footer={<><span>Cancelled orders</span><span className="font-semibold text-on-surface">Dummy/Actual</span></>}
       />
     </div>
   );

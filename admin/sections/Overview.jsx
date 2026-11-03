@@ -6,16 +6,23 @@ import FleetSection from "./FleetSection";
 import { HUBS } from "../data/adminData";
 import { useToast } from "../components/Toast";
 
-export default function UnifiedOperations({ data, telemetry, externalQuery, onAddRider, onReviewKyc }) {
+export default function Overview({ data, telemetry, externalQuery, onAddRider, onReviewKyc }) {
   const notify = useToast();
+  const totalUsers = data?.customers?.length || 0;
+  const totalOrders = data?.orders?.length || 0;
+  const riders = data?.riders?.length || 0;
   const [tab, setTab] = useState("orders");
   const [hub, setHub] = useState(HUBS[0]);
+  // console.log(data);
+  
+
 
   const tabs = [
-    { id: "orders", icon: "local_shipping", label: "Orders Management", badge: `${telemetry.orders.toLocaleString("en-IN")} Active` },
-    { id: "customers", icon: "contacts", label: "Customers Management", badge: "42.8k Users" },
-    { id: "fleet", icon: "moped", label: "Fleet & Riders Management", badge: `${69 + data.extraRiders} Riders • ${telemetry.fleetTransit} in Transit` },
+    { id: "orders", icon: "local_shipping", label: "Orders Management", badge: `${totalOrders}` },
+    { id: "customers", icon: "contacts", label: "Customers Management", badge: `${totalUsers}Active` },
+    { id: "fleet", icon: "moped", label: "Riders Management", badge: `${riders} Riders ` },
   ];
+  
 
   const syncTime = telemetry.lastSync.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
@@ -37,16 +44,12 @@ export default function UnifiedOperations({ data, telemetry, externalQuery, onAd
           <button type="button" onClick={onAddRider} className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary-container px-space-md py-2.5 font-label-md text-label-md font-bold text-on-primary-container shadow-[0_4px_16px_-4px_rgba(248,203,70,0.5)] transition-all hover:bg-[#ebbd35] active:scale-[0.97]">
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>electric_moped</span> + Add Rider
           </button>
-          <button type="button" onClick={() => notify("Direct counter order POS initialized.", "point_of_sale")} className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-surface-container-lowest px-space-md py-2.5 font-label-md text-label-md font-bold text-on-surface shadow-sm transition-all hover:bg-surface-container-low active:scale-[0.97]">
-            <span className="material-symbols-outlined text-[19px]">add_shopping_cart</span> + New Manual Order
-          </button>
-          <button type="button" onClick={() => notify("Compiling unified Operations audit CSV & PDF report...", "download")} className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-surface-container-lowest px-space-md py-2.5 font-label-md text-label-md font-bold text-on-surface-variant shadow-sm transition-all hover:bg-surface-container-low hover:text-on-surface active:scale-[0.97]">
-            <span className="material-symbols-outlined text-[19px]">file_download</span> Export All Reports
-          </button>
+         
+         
         </div>
       </div>
 
-      <KpiStrip telemetry={telemetry} extraRiders={data.extraRiders} onReviewKyc={onReviewKyc} />
+      <KpiStrip telemetry={telemetry} extraRiders={data.extraRiders} onReviewKyc={onReviewKyc} data={data} />
 
       {/* Segmented tabs */}
       <div className="mb-space-lg flex items-center justify-between overflow-x-auto rounded-2xl bg-surface-container-lowest p-1.5 shadow-sm">
@@ -74,18 +77,7 @@ export default function UnifiedOperations({ data, telemetry, externalQuery, onAd
           })}
         </div>
 
-        <div className="hidden items-center gap-2 rounded-xl bg-surface-container-low px-space-md py-1.5 lg:flex">
-          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">storefront</span>
-          <span className="font-label-sm text-label-sm font-medium text-on-surface-variant">Active Pod:</span>
-          <select
-            value={hub}
-            aria-label="Active pod"
-            onChange={(e) => { setHub(e.target.value); notify(`Telemetry scoped to: ${e.target.value.toUpperCase()}`, "storefront"); }}
-            className="cursor-pointer bg-transparent font-label-sm text-label-sm font-bold text-on-surface outline-none"
-          >
-            {HUBS.map((h) => <option key={h}>{h}</option>)}
-          </select>
-        </div>
+      
       </div>
 
       <div key={tab} className="section-in">

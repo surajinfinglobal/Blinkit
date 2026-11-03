@@ -143,3 +143,22 @@ exports.placeOrder = async (req, res) => {
     });
   }
 };
+
+exports.getMyOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate("assignedRider", "name phone status vehicle hub");
+
+    return res.status(200).json({
+      success: true,
+      orders,
+    });
+  } catch (error) {
+    console.error("Get user orders error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Aapke orders fetch nahi ho sake",
+    });
+  }
+};

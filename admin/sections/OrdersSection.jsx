@@ -6,6 +6,7 @@ import PageHeader from "../components/PageHeader";
 import { STATUS_STYLES } from "../data/adminData";
 import { initials, inr } from "../utils";
 import { useToast } from "../components/Toast";
+import OrderDetailsModal from "../components/OrderDetailsModal";
 
 const iconBtn =
   "rounded-lg bg-surface-container-low p-1.5 text-on-surface-variant transition-all hover:bg-surface-container hover:text-on-surface active:scale-90 cursor-pointer";
@@ -14,10 +15,13 @@ const textBtn =
 
 export default function OrdersSection({ data, telemetry, externalQuery, standalone }) {
   const notify = useToast();
-  const { orders, riders, changeOrderStatus, cancelOrder, assignRider } = data;
+  const { orders, riders, changeOrderStatus, cancelOrder, assignOrderToRider } = data;
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [spin, setSpin] = useState(0);
+  const [selectedRiders, setSelectedRiders] = useState({});
+  const [assigningOrders, setAssigningOrders] = useState({});
+  const [detailOrder, setDetailOrder] = useState(null);
 
   // Header ke global search se aaya query
   useEffect(() => {
@@ -77,8 +81,8 @@ export default function OrdersSection({ data, telemetry, externalQuery, standalo
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="overflow-visible rounded-2xl bg-surface-container-lowest shadow-sm">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="bg-surface-container-low/70 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
@@ -124,14 +128,17 @@ export default function OrdersSection({ data, telemetry, externalQuery, standalo
                     </td>
 
                     {/* ===== Status dropdown (4 values) ===== */}
-                    <td key={o._v || 0} className={`whitespace-nowrap px-space-md py-4 ${o._v ? "row-flash" : ""}`}>
+                    <td className="whitespace-nowrap px-space-md py-4 overflow-visible">
                       {cancelled ? (
                         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-label-sm font-bold ${STATUS_STYLES.cancelled.pill}`}>
                           <span className="h-1.5 w-1.5 rounded-full bg-outline" /> Cancelled
                         </span>
                       ) : (
                         <div className="flex flex-col items-start gap-1">
-                          <StatusSelect value={o.status} onChange={(s) => changeOrderStatus(o.id, s)} />
+                          <StatusSelect
+                            value={o.status}
+                            onChange={(status) => changeOrderStatus(o.id, status)}
+                          />
                           {o.status === "in-transit" && o.eta && (
                             <span className="pl-1 font-label-sm text-label-sm text-on-surface-variant">ETA {o.eta}</span>
                           )}
@@ -140,21 +147,75 @@ export default function OrdersSection({ data, telemetry, externalQuery, standalo
                     </td>
 
                     <td className="px-space-md py-4">
-                      {rider ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-container font-label-sm text-label-sm font-bold">{initials(rider.name)}</div>
-                          <div>
-                            <div className="font-label-md text-label-md font-bold">{rider.name}</div>
-                            <div className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-                              <span className="material-symbols-outlined text-[14px] text-tertiary">bolt</span>{rider.vehicle} ({rider.reg})
+                      <div className="flex min-w-[190px] flex-col items-start gap-2">
+                        {rider ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-container font-label-sm text-label-sm font-bold">{initials(rider.name)}</div>
+                            <div>
+                              <div className="font-label-md text-label-md font-bold">{rider.name}</div>
+                              <div className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+                                <span className="material-symbols-outlined text-[14px] text-tertiary">bolt</span>{rider.vehicle} ({rider.reg})
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ) : (
-                        <span className="font-label-sm text-label-sm italic text-on-surface-variant">
-                          {cancelled ? "—" : o.status === "packing" ? "Awaiting assignment" : "Unassigned"}
-                        </span>
-                      )}
+                        ) : (
+                          <span className="font-label-sm text-label-sm italic text-on-surface-variant">
+                            {cancelled ? "—" : "Unassigned"}
+                          </span>
+                        )}
+                        {!cancelled && o.status !== "delivered" && (
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              aria-label={`Select rider for order ${o.id}`}
+                              value={selectedRiders[o.id] ?? o.riderId ?? ""}
+                              onChange={(event) =>
+                                setSelectedRiders((current) => ({ ...current, [o.id]: event.target.value }))
+                              }
+                              className="dispatch-rider-select"
+                            >
+                              <option value="">Select rider</option>
+                              {riders.map((entry) => (
+                                  <option
+                                    key={entry.id}
+                                    value={entry.id}
+                                    disabled={entry.status !== "available" && entry.id !== o.riderId}
+                                  >
+                                    {entry.name} ({entry.id === o.riderId
+                                      ? "Current"
+                                      : entry.status === "available"
+                                        ? "Available"
+                                        : entry.status === "break"
+                                          ? "On Break"
+                                          : "In Transit"})
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const riderId = selectedRiders[o.id] ?? o.riderId;
+                                setAssigningOrders((current) => ({ ...current, [o.id]: true }));
+                                try {
+                                  const assigned = await assignOrderToRider(o.id, riderId);
+                                  if (assigned) {
+                                    setSelectedRiders((current) => ({ ...current, [o.id]: riderId }));
+                                  }
+                                } finally {
+                                  setAssigningOrders((current) => ({ ...current, [o.id]: false }));
+                                }
+                              }}
+                              disabled={
+                                assigningOrders[o.id] ||
+                                !(selectedRiders[o.id] ?? o.riderId) ||
+                                (selectedRiders[o.id] ?? o.riderId) === o.riderId
+                              }
+                              className="cursor-pointer rounded-lg bg-primary-container px-2 py-1.5 font-label-sm text-label-sm font-bold text-on-primary-container transition-colors hover:bg-[#ebbd35] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {assigningOrders[o.id] ? "Assigning..." : rider ? "Reassign" : "Assign"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     <td className="whitespace-nowrap px-space-md py-4 text-right">
@@ -162,14 +223,11 @@ export default function OrdersSection({ data, telemetry, externalQuery, standalo
                         {o.status === "in-transit" && rider && (
                           <button type="button" className={textBtn} onClick={() => notify(`Live GPS tracking for ${rider.name} (#${o.id}) - ETA ${o.eta}`, "near_me")}>Track</button>
                         )}
-                        {o.status === "packing" && !o.riderId && (
-                          <button type="button" onClick={() => assignRider(o.id)} className="cursor-pointer rounded-lg bg-primary-container px-2.5 py-1.5 font-label-sm text-label-sm font-bold text-on-primary-container shadow-sm transition-all hover:bg-[#ebbd35] active:scale-95">Assign Rider</button>
-                        )}
                         {o.status === "pending" && (
                           <button type="button" className={textBtn} onClick={() => notify(`Payment check ping sent for #${o.id}`, "payment")}>Verify</button>
                         )}
                         {(o.status === "delivered" || cancelled) && (
-                          <button type="button" className={textBtn} onClick={() => notify(`Opening details for #${o.id}`, "receipt_long")}>Details</button>
+                        <button type="button" className={textBtn} onClick={() => setDetailOrder(o)}>Details</button>
                         )}
                         {!cancelled && (
                           <button type="button" className={iconBtn} title="View Invoice" aria-label="View invoice" onClick={() => notify(`Opening e-invoice for #${o.id}...`, "print")}>
@@ -197,11 +255,13 @@ export default function OrdersSection({ data, telemetry, externalQuery, standalo
             </div>
           )}
         </div>
+<OrderDetailsModal
+        open={!!detailOrder}
+        order={detailOrder}
+        rider={detailOrder ? riderOf(detailOrder) : null}
+        onClose={() => setDetailOrder(null)}
+      />
 
-        <div className="flex flex-col items-center justify-between gap-space-sm bg-surface-container-low/50 p-space-md font-label-sm text-label-sm text-on-surface-variant sm:flex-row">
-          <span>Showing {visible.length} of {orders.length} orders • {telemetry.orders.toLocaleString("en-IN")} dispatched today (live polling every 4s)</span>
-          <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-tertiary" /> Last sync {telemetry.lastSync.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-        </div>
       </div>
     </div>
   );

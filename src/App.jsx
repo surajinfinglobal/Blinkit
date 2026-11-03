@@ -35,6 +35,8 @@ function AppLayout() {
     '/wishlist',
   ].includes(location.pathname)
 
+  
+
   return (
     <>
       <Routes>

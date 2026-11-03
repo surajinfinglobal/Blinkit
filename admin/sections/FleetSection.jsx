@@ -1,154 +1,219 @@
 import { useMemo, useState } from "react";
-import FilterPills from "../components/FilterPills";
-import SearchInput from "../components/SearchInput";
-import PageHeader from "../components/PageHeader";
 import { RIDER_STATUS } from "../data/adminData";
-import { initials, inr } from "../utils";
-import { useToast } from "../components/Toast";
+import AddRiderDrawer from "../components/AddRiderDrawer";
 
-const iconBtn = "cursor-pointer rounded-lg bg-surface-container-low p-2 text-on-surface transition-all hover:bg-surface-container active:scale-90";
-
-export default function FleetSection({ data, telemetry, onAddRider, standalone }) {
-  const notify = useToast();
-  const { riders, assignOrderToRider } = data;
-  const [filter, setFilter] = useState("all");
-  const [query, setQuery] = useState("");
-
-  const pills = useMemo(() => {
-    const c = (k) => riders.filter((r) => r.status === k).length;
-    return [
-      { value: "all", label: "All Riders", count: riders.length },
-      { value: "in-transit", label: "In Transit", count: c("in-transit") },
-      { value: "available", label: "Available at Pod", count: c("available") },
-      { value: "break", label: "On Break", count: c("break") },
-    ];
-  }, [riders]);
-
-  const visible = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    return riders.filter(
-      (r) =>
-        (filter === "all" || r.status === filter) &&
-        (!q || `${r.name} ${r.phone} ${r.reg} ${r.vehicle} ${r.hub}`.toLowerCase().includes(q))
-    );
-  }, [riders, filter, query]);
-
-  const addBtn = (
-    <button type="button" onClick={onAddRider} className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary-container px-space-md py-2.5 font-label-md text-label-md font-bold text-on-primary-container shadow-[0_4px_16px_-4px_rgba(248,203,70,0.5)] transition-all hover:bg-[#ebbd35] active:scale-[0.97]">
-      <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>electric_moped</span>
-      + Add Rider
-    </button>
+const statusPill = (status) => {
+  const cfg = RIDER_STATUS[status] || RIDER_STATUS["available"];
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-label-sm font-bold ${cfg.pill}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
   );
+};
+
+export default function FleetSection(props) {
+  const {
+    data = {},
+    riders: ridersProp = [],
+    onAddRider: onAddRiderProp,
+    loadingRiders: loadingProp,
+    telemetry,
+    standalone = true,
+  } = props;
+
+  const riders = ridersProp?.length ? ridersProp : data?.riders || [];
+  const loadingRiders = loadingProp !== undefined ? loadingProp : data?.loadingRiders || false;
+  const onAddRider = onAddRiderProp || data?.addRider;
+
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    return riders.filter((r) => {
+      const matchesQuery =
+        query.trim() === "" ||
+        [r.name, r.phone, r.id, r.mission]
+          .some((v) => (v || "").toLowerCase().includes(query.toLowerCase()));
+      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+      return matchesQuery && matchesStatus;
+    });
+  }, [riders, query, statusFilter]);
+
+  const handleSubmit = (form) => {
+    if (typeof onAddRider === "function") {
+      onAddRider(form);
+    }
+    setDrawerOpen(false);
+  };
 
   return (
-    <div className="flex w-full flex-col">
-      {standalone && (
-        <PageHeader eyebrow="Fleet" title="Fleet & Riders Management" description="Live rider telemetry, battery levels, missions and direct dispatch." actions={addBtn} />
-      )}
-
-      <div className="mb-space-md flex flex-col items-stretch justify-between gap-space-md rounded-2xl bg-surface-container-lowest p-space-md shadow-sm lg:flex-row lg:items-center">
-        <FilterPills pills={pills} active={filter} onChange={setFilter} />
-        <div className="flex items-center gap-2">
-          <SearchInput value={query} onChange={setQuery} placeholder="Rider name, bike reg, phone..." />
-          {!standalone && (
-            <button type="button" onClick={onAddRider} className="flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-primary-container px-3 py-1.5 font-label-sm text-label-sm font-bold text-on-primary-container shadow-sm transition-all active:scale-95">
-              <span className="material-symbols-outlined text-[16px]">add</span> Onboard Rider
-            </button>
-          )}
+    <section className="flex flex-col gap-space-lg">
+      <header className="flex flex-wrap items-start justify-between gap-space-md">
+        <div>
+         
+          <h1 className="mt-1 font-display-sm text-display-sm font-extrabold tracking-tight text-on-surface">
+            Rider Partners
+          </h1>
+          <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+            Live view of all onboarded delivery partners pulled from the database
+          </p>
         </div>
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant">
+              search
+            </span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, phone, mission..."
+              className="h-11 w-[280px] rounded-xl bg-surface-container-low pl-9 pr-3 font-body-md text-body-md text-on-surface outline-none transition-all placeholder:text-on-surface-variant focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-11 rounded-xl bg-surface-container-low px-3 font-label-md text-label-md text-on-surface outline-none transition-all focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container"
+          >
+            <option value="all">All Status</option>
+            <option value="available">Available</option>
+            <option value="in-transit">In Transit</option>
+            <option value="break">On Break</option>
+          </select>
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="flex h-11 items-center gap-2 rounded-xl bg-primary-container px-4 font-label-md text-label-md font-bold text-on-primary-container shadow-[0_4px_16px_-6px_rgba(248,203,70,0.9)] transition-all hover:bg-[#ebbd35] active:scale-[0.98]"
+          >
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
+            Onboard Rider
+          </button>
+        </div>
+      </header>
 
-      <div className="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm">
+      <div className="overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-lowest shadow-[0_40px_80px_-60px_rgba(15,23,42,0.9)]">
+        <div className="flex items-center justify-between border-b border-outline-variant/40 px-space-lg py-4">
+          <div>
+            <h2 className="font-headline-sm text-headline-sm font-extrabold text-on-surface">
+              Active Fleet
+            </h2>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              {loadingRiders
+                ? "Fetching riders from database..."
+                : `${filtered.length} partner${filtered.length === 1 ? "" : "s"} shown`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-on-surface-variant">
+            <span className="material-symbols-outlined text-[20px]">sync</span>
+            <span className="font-label-sm text-label-sm">Live Sync</span>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
+          <table className="min-w-full divide-y divide-outline-variant/30">
             <thead>
-              <tr className="bg-surface-container-low/70 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                {["Rider Partner", "Assigned Pod & Hub", "Vehicle & Battery", "Current Mission", "Performance Today", "Rider Status", "Direct Dispatch"].map((h, i) => (
-                  <th key={h} className={`px-space-md py-3.5 font-bold ${i === 6 ? "text-right" : ""}`}>{h}</th>
-                ))}
+              <tr className="text-left">
+                <th className="px-space-lg py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Rider
+                </th>
+                <th className="px-space-lg py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Contact
+                </th>
+                <th className="px-space-lg py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Status
+                </th>
+                <th className="px-space-lg py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Current Mission
+                </th>
+                <th className="px-space-lg py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Hub
+                </th>
+                <th className="px-space-lg py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Vehicle
+                </th>
+                <th className="px-space-lg py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Shift
+                </th>
               </tr>
             </thead>
-            <tbody key={`${filter}-${query}`} className="divide-y divide-surface-container font-body-sm text-body-sm text-on-surface">
-              {visible.map((r, i) => {
-                const st = RIDER_STATUS[r.status];
-                const low = r.battery < 30;
-                return (
-                  <tr key={r.id} style={{ animationDelay: `${Math.min(i, 10) * 45}ms` }} className={`row-in transition-colors hover:bg-surface-container-low/40 ${r.isNew ? "row-flash" : ""}`}>
-                    <td className="whitespace-nowrap px-space-md py-4">
+            <tbody className="divide-y divide-outline-variant/20">
+              {loadingRiders && (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-space-lg py-10 text-center font-body-md text-body-md text-on-surface-variant"
+                  >
+                    Loading riders...
+                  </td>
+                </tr>
+              )}
+              {!loadingRiders && filtered.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-space-lg py-10 text-center font-body-md text-body-md text-on-surface-variant"
+                  >
+                    No riders found
+                  </td>
+                </tr>
+              )}
+              {!loadingRiders &&
+                filtered.map((rider) => (
+                  <tr
+                    key={rider.id}
+                    className="transition-colors hover:bg-surface-container-low/60"
+                  >
+                    <td className="px-space-lg py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-full font-bold text-label-md text-on-surface ${r.isNew ? "bg-primary-container/50" : "bg-surface-container"}`}>{initials(r.name)}</div>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-container/40 text-on-primary-container">
+                          <span className="material-symbols-outlined text-[20px]">
+                            person
+                          </span>
+                        </div>
                         <div>
-                          <div className="flex items-center gap-1.5 font-label-md text-label-md font-bold">{r.name}{r.isNew && <span className="rounded bg-tertiary-container/40 px-1.5 font-label-sm text-label-sm font-bold text-on-tertiary-container">NEW</span>}</div>
-                          <div className="font-label-sm text-label-sm text-on-surface-variant">{r.phone}</div>
+                          <p className="font-label-lg text-label-lg font-bold text-on-surface">
+                            {rider.name}
+                          </p>
+                          <p className="font-label-sm text-label-sm text-on-surface-variant">
+                            ID: {(rider.id || "").toString().slice(-6).toUpperCase()}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-space-md py-4">
-                      <div className="font-label-md text-label-md font-semibold">{r.hub}</div>
-                      <div className="font-label-sm text-label-sm text-on-surface-variant">Shift: {r.shift}</div>
+                    <td className="px-space-lg py-4 font-body-md text-body-md text-on-surface">
+                      {rider.phone}
                     </td>
-                    <td className="px-space-md py-4">
-                      <div className="flex items-center gap-1.5 font-label-md text-label-md font-bold">
-                        <span className={`material-symbols-outlined text-[18px] ${low ? "text-error" : "text-tertiary"}`}>{r.status === "break" ? "battery_charging_full" : "electric_bolt"}</span>
-                        {r.vehicle} <span className="font-label-sm text-label-sm font-normal text-on-surface-variant">({r.reg})</span>
-                      </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <div className="h-2 w-24 overflow-hidden rounded-full bg-surface-container">
-                          <div className={`h-full rounded-full transition-all duration-700 ${low ? "bg-error" : r.battery < 60 ? "bg-primary-container" : "bg-tertiary"}`} style={{ width: `${r.battery}%` }} />
-                        </div>
-                        <span className={`font-label-sm text-label-sm font-bold ${low ? "text-error" : "text-tertiary"}`}>
-                          {r.battery}% • {r.status === "in-transit" ? `${r.id === "r1" ? telemetry.speed : r.speed || 24} km/h` : r.status === "break" ? "Charging" : "Standby"}
+                    <td className="px-space-lg py-4">{statusPill(rider.status)}</td>
+                    <td className="px-space-lg py-4 font-body-md text-body-md text-on-surface">
+                      {rider.mission ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-container px-2 py-1 font-label-sm text-label-sm">
+                          <span className="material-symbols-outlined text-[16px]">
+                            local_shipping
+                          </span>
+                          {rider.mission}
                         </span>
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-space-md py-4">
-                      {r.mission ? (
-                        <>
-                          <div className="font-label-md text-label-md font-bold">Order #{r.mission}</div>
-                          <div className="font-label-sm text-label-sm text-on-surface-variant">On delivery run</div>
-                        </>
                       ) : (
-                        <>
-                          <div className="font-label-md text-label-md font-semibold text-on-surface-variant">{r.status === "break" ? "Break (Pod Hub)" : "At Bay (Pod Dock)"}</div>
-                          {r.status === "available" && <div className="font-label-sm text-label-sm font-bold text-tertiary">Ready for Instant Dispatch</div>}
-                        </>
+                        <span className="text-on-surface-variant">—</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-space-md py-4">
-                      <div className="font-label-md text-label-md font-bold">{r.drops} Drops Completed</div>
-                      <div className="font-label-sm text-label-sm font-bold text-tertiary">{inr(r.earned, 0)} Earned Today</div>
+                    <td className="px-space-lg py-4 font-body-md text-body-md text-on-surface-variant">
+                      {rider.hub || "—"}
                     </td>
-                    <td className="whitespace-nowrap px-space-md py-4">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-label-sm font-bold ${st.pill}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} /> {st.label}
-                      </span>
+                    <td className="px-space-lg py-4 font-body-md text-body-md text-on-surface-variant">
+                      {rider.vehicle || "—"}
                     </td>
-                    <td className="whitespace-nowrap px-space-md py-4 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        {r.status === "available" && (
-                          <button type="button" onClick={() => assignOrderToRider(r.id)} className="cursor-pointer rounded-lg bg-primary-container px-2.5 py-1.5 font-label-sm text-label-sm font-bold text-on-primary-container shadow-sm transition-all hover:bg-[#ebbd35] active:scale-95">Assign Order</button>
-                        )}
-                        <button type="button" title="Direct Phone" aria-label={`Call ${r.name}`} className={iconBtn} onClick={() => notify(`Dialing ${r.name} (${r.phone}) on VoIP dispatch line...`, "call")}>
-                          <span className="material-symbols-outlined text-[18px]">call</span>
-                        </button>
-                        <button type="button" title="WhatsApp" aria-label={`WhatsApp ${r.name}`} className={`${iconBtn} !text-tertiary`} onClick={() => window.open(`https://wa.me/${r.phone.replace(/\D/g, "")}`, "_blank", "noopener")}>
-                          <span className="material-symbols-outlined text-[18px]">chat</span>
-                        </button>
-                      </div>
+                    <td className="px-space-lg py-4 font-body-md text-body-md text-on-surface-variant">
+                      {rider.shift || "—"}
                     </td>
                   </tr>
-                );
-              })}
+                ))}
             </tbody>
           </table>
-          {visible.length === 0 && (
-            <div className="pop-in flex flex-col items-center py-12 text-center">
-              <span className="material-symbols-outlined mb-2 text-[40px] text-on-surface-variant">moped</span>
-              <p className="font-label-lg text-label-lg">No riders found</p>
-            </div>
-          )}
         </div>
       </div>
-    </div>
+
+      <AddRiderDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSubmit={handleSubmit} />
+    </section>
   );
 }

@@ -9,3 +9,5 @@
    import AdminPanel from './admin/AdminPanel'
    <Route path="/admin" element={<AdminPanel />} />
    ```
+4. `/admin` par dashboard tabhi khulta hai jab admin JWT session verify ho. Admin API calls customer token se alag `adminToken` use karti hain.
+5. Backend admin account seed karne ke liye `npm --prefix backend run seed:admin` chalao. `backend/.env` me `ADMIN_EMAIL` aur `ADMIN_PASSWORD` set karke default seed credentials customize kar sakte ho.

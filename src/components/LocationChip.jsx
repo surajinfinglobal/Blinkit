@@ -299,7 +299,6 @@ export default function LocationChip({
     if (!silent) setLoading(true);
     try {
       const res = await getAddressesAPI();
-      console.log("Saved addresses:", res);
       const apiAddresses = Array.isArray(res)
         ? res
         : res?.addresses || res?.data?.addresses || res?.data || [];
