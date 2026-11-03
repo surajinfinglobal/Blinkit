@@ -1,0 +1,13 @@
+# Admin Panel (React)
+
+1. Admin panel `admin/` folder se `/admin` route par load hota hai. `admin-tailwind.css` Tailwind v4 utilities aur admin theme tokens dono define karta hai.
+2. `index.html` <head> me fonts:
+   - Plus Jakarta Sans (400-800)
+   - Material Symbols Outlined (`...css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1`)
+3. Route me use karo:
+   ```jsx
+   import AdminPanel from './admin/AdminPanel'
+   <Route path="/admin" element={<AdminPanel />} />
+   ```
+4. `/admin` par dashboard tabhi khulta hai jab admin JWT session verify ho. Admin API calls customer token se alag `adminToken` use karti hain.
+5. Backend admin account seed karne ke liye `npm --prefix backend run seed:admin` chalao. `backend/.env` me `ADMIN_EMAIL` aur `ADMIN_PASSWORD` set karke default seed credentials customize kar sakte ho.

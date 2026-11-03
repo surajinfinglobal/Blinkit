@@ -20,6 +20,14 @@ export default function OrderSummaryReceipt() {
     navigate('/', { replace: true });
     return null;
   }
+
+
+const STEPS = [
+  { value: "received", label: "Order Placed" },
+  { value: "packing", label: "Packing" },
+  { value: "out_for_delivery", label: "Out for Delivery" },
+  { value: "delivered", label: "Delivered" },
+];
   
   const [isTracking, setIsTracking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -77,7 +85,7 @@ const handleDownloadInvoice = () => {
             
             <div className="flex flex-col min-w-0">
               <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#F8CB46] uppercase font-semibold truncate">
-                Order #{payment.paymentId}
+                Order #{payment.orderId}
               </span>
               <h1 className="text-[16px] sm:text-[18px] leading-tight font-semibold text-[#121c2a] truncate">
                 Order Summary & Receipt

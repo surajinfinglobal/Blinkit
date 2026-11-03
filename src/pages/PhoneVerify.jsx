@@ -19,15 +19,21 @@ export default function PhoneVerify({
   initialPhone = '',
   maxLength = 10,
   onVerify,
+  phone: controlledPhone,
+  onPhoneChange,
+  phoneInput,
+  phoneInputRef,
 }) {
-const [phone, setPhone] = useState(initialPhone.replace(/\D/g, '').slice(0, maxLength));
-const [keypadOpen, setKeypadOpen] = useState(true);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState('');
+  const [localPhone, setLocalPhone] = useState(initialPhone.replace(/\D/g, '').slice(0, maxLength));
+  const phone = controlledPhone ?? localPhone;
+  const [keypadOpen, setKeypadOpen] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const inputRef = useRef(null);
   const wrapRef = useRef(null);
   const navigate = useNavigate()
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  const activeInputRef = phoneInputRef ?? inputRef;
+  useEffect(() => { activeInputRef.current?.focus(); }, [activeInputRef]);
 
   // Close keypad when tapping outside
   useEffect(() => {
@@ -41,15 +47,17 @@ const [error, setError] = useState('');
     return () => document.removeEventListener('pointerdown', onPointer);
   }, [keypadOpen]);
 
-  const pressDigit = (d) => {
-    setPhone((prev) => {
-      if (prev.length >= maxLength) return prev;
-      return prev + d;
-    });
+  const updatePhone = (nextPhone) => {
+    if (controlledPhone === undefined) setLocalPhone(nextPhone);
+    onPhoneChange?.(nextPhone);
+  };
+
+  const pressDigit = (digit) => {
+    if (phone.length < maxLength) updatePhone(phone + digit);
   };
 
   const pressDelete = () => {
-    setPhone((prev) => prev.slice(0, -1));
+    updatePhone(phone.slice(0, -1));
   };
 
   const pressOk = () => {
@@ -90,30 +98,34 @@ const [error, setError] = useState('');
       {/* Status bar */}
      
       {/* Form */}
-      <section className="px-6 flex-1 flex flex-col justify-center">
+      <section className={`px-6 flex-1 flex flex-col ${phoneInput ? 'justify-start pt-16' : 'justify-center'}`}>
         <div
-          className="w-full border-0 rounded-lg flex items-center h-12 bg-white overflow-hidden shadow-xs mb-8"
+          className="w-full mb-8"
           onClick={() => {
             setKeypadOpen(true);
-            inputRef.current?.focus();
+            activeInputRef.current?.focus();
           }}
         >
-          <div className="px-3.5 h-full flex items-center justify-center text-gray-700 text-sm font-medium border-r border-gray-300">
-            {countryCode}
-          </div>
-          <div className="flex-1 px-3.5 flex items-center">
-            <input
-              ref={inputRef}
-              type="tel"
-              inputMode="none" /* system keyboard band — custom keypad use */
-              readOnly
-              aria-label="Phone number"
-              value={phone}
-              placeholder="Enter mobile number"
-              onFocus={() => setKeypadOpen(true)}
-              className="w-full bg-transparent border-none text-gray-800 text-sm font-semibold tracking-wide focus:outline-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:font-normal"
-            />
-          </div>
+          {phoneInput ?? (
+            <div className="w-full border-0 rounded-lg flex items-center h-12 bg-white overflow-hidden shadow-xs">
+              <div className="px-3.5 h-full flex items-center justify-center text-gray-700 text-sm font-medium border-r border-gray-300">
+                {countryCode}
+              </div>
+              <div className="flex-1 px-3.5 flex items-center">
+                <input
+                  ref={activeInputRef}
+                  type="tel"
+                  inputMode="none"
+                  readOnly
+                  aria-label="Phone number"
+                  value={phone}
+                  placeholder="Enter mobile number"
+                  onFocus={() => setKeypadOpen(true)}
+                  className="w-full bg-transparent border-none text-gray-800 text-sm font-semibold tracking-wide focus:outline-none focus:ring-0 p-0 placeholder:text-gray-400 placeholder:font-normal"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <button

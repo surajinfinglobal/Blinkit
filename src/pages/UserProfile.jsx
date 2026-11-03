@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { getMyOrdersAPI } from "../services/orderplaceService.js";
+import { getUserProfile } from '../services/api';
+import { getAddressesAPI } from '../services/addressService.js';
 
 /* ================= CONFIG / DUMMY DATA ================= */
 
@@ -10,13 +13,6 @@ const SUPPORT = {
   email: 'support@example.com',
   whatsapp: '911234567890',
 };
-
-const DUMMY_ORDERS = [
-  { id: '#ORD1042', date: 'Today, 10:24 AM', status: 'On the way', total: 342, items: ['Tomato 1 kg × 1', 'Onion 2 kg × 1', 'Amul Milk 500 ml × 2'] },
-  { id: '#ORD1017', date: 'Yesterday, 7:10 PM', status: 'Delivered', total: 186, items: ['Banana 1 dozen × 1', 'Apple 500 g × 1'] },
-  { id: '#ORD0988', date: '24 Oct, 1:45 PM', status: 'Delivered', total: 529, items: ['Basmati Rice 5 kg × 1', 'Toor Dal 1 kg × 1', 'Sunflower Oil 1 L × 1'] },
-  { id: '#ORD0951', date: '19 Oct, 9:05 AM', status: 'Cancelled', total: 120, items: ['Paneer 200 g × 1'] },
-];
 
 const STATUS_STYLES = {
   'On the way': 'bg-amber-50 text-amber-700',
@@ -271,27 +267,44 @@ const inputCls =
 
 /* ================= SHEETS ================= */
 
-function OrdersSheet({ onClose, onHelp }) {
-  const [openId, setOpenId] = useState(DUMMY_ORDERS[0]?.id);
+function OrdersSheet({ orders, onClose, onHelp }) {
+  const [openId, setOpenId] = useState(orders[0]?._id);
   return (
     <Sheet title="My Orders" onClose={onClose}>
       <div className="space-y-3">
-        {DUMMY_ORDERS.map((o) => {
-          const open = openId === o.id;
+        {orders.length === 0 && (
+          <p className="py-6 text-center text-[13px] text-gray-500">No orders yet.</p>
+        )}
+        {orders.map((order) => {
+          const open = openId === order._id;
+          const status = {
+            received: 'Order received',
+            packing: 'Packing',
+            out_for_delivery: 'On the way',
+            delivered: 'Delivered',
+            cancelled: 'Cancelled',
+          }[order.orderStatus] || order.orderStatus;
+          const statusStyle = order.orderStatus === 'delivered'
+            ? STATUS_STYLES.Delivered
+            : order.orderStatus === 'cancelled'
+              ? STATUS_STYLES.Cancelled
+              : STATUS_STYLES['On the way'];
           return (
-            <div key={o.id} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div key={order._id} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
               <button
                 type="button"
-                onClick={() => setOpenId(open ? null : o.id)}
+                onClick={() => setOpenId(open ? null : order._id)}
                 className="flex w-full items-center justify-between px-4 py-3 text-left"
               >
                 <div>
-                  <p className="text-[13px] font-bold text-gray-900">{o.id}</p>
-                  <p className="mt-0.5 text-[11px] text-gray-400">{o.date}</p>
+                  <p className="text-[13px] font-bold text-gray-900">#{order.orderId}</p>
+                  <p className="mt-0.5 text-[11px] text-gray-400">
+                    {new Date(order.createdAt).toLocaleString('en-IN')}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${STATUS_STYLES[o.status]}`}>
-                    {o.status}
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle}`}>
+                    {status}
                   </span>
                   <svg
                     viewBox="0 0 24 24"
@@ -308,14 +321,16 @@ function OrdersSheet({ onClose, onHelp }) {
                 <div className="overflow-hidden">
                   <div className="border-t border-gray-100 px-4 py-3">
                     <ul className="space-y-1">
-                      {o.items.map((it) => (
-                        <li key={it} className="text-[12px] text-gray-600">
-                          • {it}
+                      {(order.items || []).map((item) => (
+                        <li key={item.productId} className="text-[12px] text-gray-600">
+                          • {item.name} {item.unit} × {item.quantity}
                         </li>
                       ))}
                     </ul>
                     <div className="mt-3 flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-gray-900">Total ₹{o.total}</span>
+                      <span className="text-[13px] font-bold text-gray-900">
+                        Total ₹{Number(order.billDetails?.grandTotal || 0).toLocaleString('en-IN')}
+                      </span>
                       <button
                         type="button"
                         onClick={onHelp}
@@ -331,6 +346,40 @@ function OrdersSheet({ onClose, onHelp }) {
           );
         })}
       </div>
+    </Sheet>
+  );
+}
+
+function SavedAddressesSheet({ addresses, onClose }) {
+  return (
+    <Sheet title="Saved addresses" onClose={onClose}>
+      {addresses.length === 0 ? (
+        <p className="py-6 text-center text-[13px] text-gray-500">No saved addresses found.</p>
+      ) : (
+        <div className="space-y-3">
+          {addresses.map((address) => {
+            const details = [
+              address.houseNo,
+              address.floor,
+              address.area,
+              address.landmark,
+              address.city,
+              address.pincode,
+            ].filter(Boolean);
+
+            return (
+              <div key={address._id} className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-[12px] font-semibold text-gray-800">
+                  {address.label || 'Saved address'}
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-gray-600">
+                  {details.join(', ') || 'Address details unavailable'}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Sheet>
   );
 }
@@ -620,16 +669,67 @@ function EditSheet({ user, onSave, onClose }) {
 
 /* ================= MAIN PAGE ================= */
 
+
 export default function UserProfile() {
-  const navigate = useNavigate();
+    const navigate = useNavigate();
+  const [user, setUser] = useState(loadUser());
+  const [ordersCount, setOrdersCount] = useState(0);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState('');
+  const [orders, setOrders] = useState([]);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [sheet, setSheet] = useState(null); // 'orders' | 'settings' | 'rate-us' | 'refer' | 'help' | 'edit'
-  const [user, setUser] = useState(loadUser);
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...readJSON('app_settings', {}) }));
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
+  useEffect(() => {
+    let active = true;
 
-  const addressCount = readJSON('grocery_addresses', []).length;
+    Promise.allSettled([getUserProfile(), getMyOrdersAPI(), getAddressesAPI()])
+      .then(([profileResult, ordersResult, addressesResult]) => {
+        if (!active) return;
+
+        const errors = [];
+        if (profileResult.status === 'fulfilled') {
+          const profile = profileResult.value;
+          setUser((previous) => ({
+            ...previous,
+            name: profile.name || previous.name,
+            phone: profile.phone || previous.phone,
+          }));
+          localStorage.setItem(
+            'user',
+            JSON.stringify({ ...readJSON('user', {}), ...profile })
+          );
+        } else {
+          console.error('UserProfile fetch error:', profileResult.reason);
+          errors.push(profileResult.reason.message || 'Profile details load nahi ho paye');
+        }
+
+        if (ordersResult.status === 'fulfilled') {
+          setOrders(ordersResult.value);
+          setOrdersCount(ordersResult.value.length);
+        } else {
+          console.error('User orders fetch error:', ordersResult.reason);
+          errors.push(ordersResult.reason.message || 'Orders load nahi ho paye');
+        }
+        if (addressesResult.status === 'fulfilled') {
+          setSavedAddresses(addressesResult.value);
+        } else {
+          console.error('Saved addresses fetch error:', addressesResult.reason);
+          errors.push(addressesResult.reason.message || 'Saved addresses load nahi ho paye');
+        }
+        setStatsError(errors.join('. '));
+      })
+      .finally(() => {
+        if (active) setLoadingStats(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const closeSheet = useCallback(() => setSheet(null), []);
 
@@ -713,18 +813,29 @@ export default function UserProfile() {
       <div className="relative z-10 mx-auto -mt-8 w-full max-w-2xl px-4">
         <div className="grid grid-cols-2 divide-x divide-gray-100 rounded-2xl border border-gray-100 bg-white py-3 shadow-md fade-up" style={{ animationDelay: '120ms' }}>
           <button type="button" onClick={() => setSheet('orders')} className="flex flex-col items-center transition active:scale-95">
-            <span className="text-[18px] font-extrabold text-gray-900">{DUMMY_ORDERS.length}</span>
+            <span className="text-[18px] font-extrabold text-gray-900">{loadingStats ? '—' : ordersCount}</span>
             <span className="text-[11px] text-gray-400">Orders</span>
           </button>
-          <div className="flex flex-col items-center">
-            <span className="text-[18px] font-extrabold text-gray-900">{addressCount}</span>
+          <button
+            type="button"
+            onClick={() => setSheet('addresses')}
+            disabled={loadingStats}
+            className="flex flex-col items-center transition active:scale-95 disabled:cursor-wait"
+            aria-label={`Show ${savedAddresses.length} saved addresses`}
+          >
+            <span className="text-[18px] font-extrabold text-gray-900">{loadingStats ? '—' : savedAddresses.length}</span>
             <span className="text-[11px] text-gray-400">Saved addresses</span>
-          </div>
+          </button>
         </div>
       </div>
 
       {/* ================= Profile menu ================= */}
       <main className="mx-auto w-full max-w-2xl px-4 pb-6 pt-4">
+        {statsError && (
+          <div role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-[12px] text-red-700">
+            Profile details load nahi ho paye: {statsError}
+          </div>
+        )}
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <ul className="divide-y divide-gray-100">
             {menuItems.map((item, i) => (
@@ -768,7 +879,8 @@ export default function UserProfile() {
       </main>
 
       {/* ================= Sheets ================= */}
-      {sheet === 'orders' && <OrdersSheet onClose={closeSheet} onHelp={() => setSheet('help')} />}
+      {sheet === 'orders' && <OrdersSheet orders={orders} onClose={closeSheet} onHelp={() => setSheet('help')} />}
+      {sheet === 'addresses' && <SavedAddressesSheet addresses={savedAddresses} onClose={closeSheet} />}
       {sheet === 'settings' && <SettingsSheet settings={settings} onChange={updateSettings} onClose={closeSheet} />}
       {sheet === 'rate-us' && <RateSheet onClose={closeSheet} onToast={showToast} />}
       {sheet === 'refer' && <ReferSheet user={user} onClose={closeSheet} onToast={showToast} />}

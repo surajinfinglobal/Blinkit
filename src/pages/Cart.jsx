@@ -4,6 +4,11 @@ import { useNavigate } from "react-router-dom";
 import LocationChip from '../components/LocationChip.jsx';
 import PulseSplash from '../components/PulseSplash.jsx';
 import {
+  getSelectedAddress,
+  setSelectedAddress,
+  subscribeToSelectedAddress,
+} from "../services/selectedAddress.js";
+import {
   getCart,
   updateCartQuantity,
   removeFromCart,
@@ -11,7 +16,7 @@ import {
 
 /* ================= CONFIG ================= */
 
-const HOME_ROUTE = "/";                    // empty cart se "Start shopping" yahan jayega
+const HOME_ROUTE = "/home";                    // empty cart se "Start shopping" yahan jayega
 const CHECKOUT_ROUTE = "/CheckoutPayment";
 
 const HANDLING_FEE = 15;
@@ -57,21 +62,17 @@ const loadJSON = (key, fallback) => {
     return fallback;
   }
 };
-const saveJSON = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* ignore */
-  }
-};
-
 const readAddressState = () => {
   const addrs = loadJSON(ADDR_KEY, DEFAULT_ADDRESSES);
   const selId = loadJSON(SEL_KEY, "a1");
-  const list = Array.isArray(addrs) && addrs.length ? addrs : [];
+  const savedAddresses = Array.isArray(addrs) && addrs.length ? addrs : [];
+  const selected = getSelectedAddress(savedAddresses.find((address) => address.id === selId) || savedAddresses[0] || null);
+  const list = selected && !savedAddresses.some((address) => address.id === selected.id)
+    ? [selected, ...savedAddresses]
+    : savedAddresses;
   return {
     addresses: list,
-    selected: list.find((a) => a.id === selId) || list[0] || null,
+    selected: selected || list.find((address) => address.id === selId) || list[0] || null,
   };
 };
 
@@ -164,7 +165,20 @@ const CartScreen = () => {
   });
   const [couponInput, setCouponInput] = useState(appliedCode || "");
   const [couponError, setCouponError] = useState("");
-  const [shakeKey, setShakeKey] = useState(0);
+  const [shaking, setShaking] = useState(false);
+  const shakeTimer = useRef(null);
+  const [showOffers, setShowOffers] = useState(false); // coupon input click par offers dikhte hain
+  const couponBoxRef = useRef(null);
+
+  // Shake animation bina input ko remount kiye (pehle key badalne se input ka focus/keyboard chala jata tha)
+  const triggerShake = () => {
+    clearTimeout(shakeTimer.current);
+    setShaking(false);
+    requestAnimationFrame(() => {
+      setShaking(true);
+      shakeTimer.current = setTimeout(() => setShaking(false), 400);
+    });
+  };
 
   // ---- Location (home se sync) ----
   const [{ addresses, selected: selectedAddress }, setAddrState] = useState(readAddressState);
@@ -177,8 +191,6 @@ const CartScreen = () => {
   // ---- Delivery ETA (ek baar random) ----
   const [eta] = useState(randomEta);
 
-  // ---- BottomNav ki height naap lo: nav chahe fixed ho ya in-flow, uski jagah reserve rahegi
-  // taaki "Proceed to Pay" bar uske upar dikhe aur kabhi dabe nahi
   const navWrapRef = useRef(null);
   const [navH, setNavH] = useState(0);
   useLayoutEffect(() => {
@@ -203,7 +215,25 @@ const CartScreen = () => {
   useEffect(() => () => {
     clearTimeout(toastTimer.current);
     clearTimeout(payTimer.current);
+    clearTimeout(shakeTimer.current);
   }, []);
+
+  // Offers list: bahar click / Esc par band
+  useEffect(() => {
+    if (!showOffers) return;
+    const onDown = (e) => {
+      if (couponBoxRef.current && !couponBoxRef.current.contains(e.target)) setShowOffers(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setShowOffers(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown, { passive: true });
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [showOffers]);
 
   // Fonts & Icons (home unmount par apne links hata deta hai, isliye yahan bhi load)
   useEffect(() => {
@@ -232,6 +262,19 @@ const CartScreen = () => {
     };
   }, []);
 
+  useEffect(() => subscribeToSelectedAddress((address) => {
+    if (address) {
+      setAddrState((current) => ({
+        addresses: current.addresses.some((entry) => entry.id === address.id)
+          ? current.addresses.map((entry) => (entry.id === address.id ? address : entry))
+          : [address, ...current.addresses],
+        selected: address,
+      }));
+    } else {
+      setAddrState(readAddressState());
+    }
+  }), []);
+
   // Applied coupon ko session mein rakho (checkout se wapas aane par bhi rahe)
   useEffect(() => {
     try {
@@ -250,7 +293,7 @@ const CartScreen = () => {
         setLoading(true);
         setCartError("");
         const data = await getCart();
-        const cartItems = (data.items || []).map((item) => ({
+        const cartItems = (data?.items || []).map((item) => ({
           id: item.productId,
           name: item.name,
           unit: item.unit,
@@ -260,6 +303,7 @@ const CartScreen = () => {
         }));
         if (!cancelled) setItems(cartItems);
       } catch (error) {
+        console.error("Cart load error:", error);
         if (!cancelled) 
           setCartError("Something Went Wrong");
         //  setCartError(error.message || "Cart load nahi ho paya.");
@@ -338,18 +382,19 @@ const CartScreen = () => {
     const code = (rawCode ?? couponInput).trim().toUpperCase();
     if (!code) {
       setCouponError("Coupon code daalo");
-      setShakeKey((k) => k + 1);
+      triggerShake();
       return;
     }
     const result = evaluateCoupon(code, subtotal);
     if (!result.ok) {
       setCouponError(result.reason);
-      setShakeKey((k) => k + 1);
+      triggerShake();
       return;
     }
     setCouponError("");
     setCouponInput(code);
     setAppliedCode(code);
+    setShowOffers(false);
     showToast(`'${code}' applied`);
   };
 
@@ -357,11 +402,13 @@ const CartScreen = () => {
     setAppliedCode(null);
     setCouponInput("");
     setCouponError("");
+    setShowOffers(false);
   };
 
   // ---- Location ----
   const selectAddress = (id) => {
-    saveJSON(SEL_KEY, id);
+    const address = addresses.find((entry) => entry.id === id) || null;
+    setSelectedAddress(address);
     setAddrState(readAddressState());
     setShowSheet(false);
   };
@@ -572,14 +619,7 @@ const CartScreen = () => {
           </div>
 
           {/* Location – home se synced */}
-          <LocationChip
-            onClick={() => setShowSheet(true)}
-            selectedAddress={selectedAddress}
-            showSheet={showSheet}
-            shine={true}
-            ariaLabel="Change delivery address"
-            className="header-in mt-3 max-w-70"
-          />
+          <LocationChip className="header-in mt-3 max-w-70" />
         </header>
 
         <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar relative w-full pt-4 pb-4">
@@ -724,10 +764,10 @@ const CartScreen = () => {
 
             {/* ================= COUPON ================= */}
             {!isEmpty && (
-              <div className="px-4 mb-6 fade-up">
+              <div ref={couponBoxRef} className="px-4 mb-6 fade-up">
                 <div
-                  key={shakeKey}
-                  className={`bg-white rounded-xl p-1 shadow-sm flex items-center justify-between gap-2 pl-4 ${shakeKey ? "shake" : ""}`}
+                  onClick={() => !appliedCode && setShowOffers(true)}
+                  className={`bg-white rounded-xl p-1 shadow-sm flex items-center justify-between gap-2 pl-4 ${shaking ? "shake" : ""}`}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className="material-symbols-outlined text-black text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -740,6 +780,7 @@ const CartScreen = () => {
                       type="text"
                       value={couponInput}
                       readOnly={!!appliedCode}
+                      onFocus={() => !appliedCode && setShowOffers(true)}
                       onChange={(e) => {
                         setCouponInput(e.target.value);
                         setCouponError("");
@@ -786,12 +827,21 @@ const CartScreen = () => {
                   </div>
                 )}
 
-                {/* Available offers */}
-                {!appliedCode && (
-                  <div className="mt-3 flex flex-col gap-1.5">
-                    <p className="px-1 text-[10px] font-semibold tracking-wider uppercase text-[#707972]">
-                      Available offers
-                    </p>
+                {/* Available offers – coupon input par click/focus karne par dikhte hain */}
+                {!appliedCode && showOffers && (
+                  <div className="slide-down mt-3 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[10px] font-semibold tracking-wider uppercase text-[#707972]">
+                        Available offers
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowOffers(false)}
+                        className="text-[10px] font-semibold uppercase tracking-wider text-[#707972] active:opacity-60"
+                      >
+                        Hide
+                      </button>
+                    </div>
                     {Object.entries(COUPONS).map(([code, def], i) => {
                       const locked = subtotal < def.min;
                       return (
@@ -821,15 +871,24 @@ const CartScreen = () => {
             {!isEmpty && (
               <div className="px-4 mb-8 fade-up">
                 <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <h3 className="text-[16px] leading-6 font-semibold text-[#121c2a] mb-2">Bill Details</h3>
+                  <h3 className="flex items-center gap-1.5 text-[16px] leading-6 font-semibold text-[#121c2a] mb-2">
+                    <span className="material-symbols-outlined text-[20px] text-[#B8860B]">receipt_long</span>
+                    Bill Details
+                  </h3>
                   <div className="flex flex-col gap-2.5">
                     <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
-                      <span>Item Total</span>
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-[#B8860B]">shopping_bag</span>
+                        Item Total
+                      </span>
                       <span key={subtotal} className="price-pop font-semibold text-[#121c2a]">₹ {inr(subtotal)}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
-                      <span>Delivery Fee</span>
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-[#B8860B]">local_shipping</span>
+                        Delivery Fee
+                      </span>
                       <div className="flex items-center gap-1.5">
                         {deliveryFee === 0 && (
                           <span className="line-through text-[#707972] text-[10px] leading-[14px]">₹ {DELIVERY_FEE}</span>
@@ -841,13 +900,19 @@ const CartScreen = () => {
                     </div>
 
                     <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
-                      <span>Handling Fee</span>
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-[#B8860B]">inventory_2</span>
+                        Handling Fee
+                      </span>
                       <span className="font-semibold text-[#121c2a]">₹ {HANDLING_FEE}</span>
                     </div>
 
                     {couponDiscount > 0 && (
                       <div className="slide-down flex justify-between items-center text-[12px] leading-4 text-[#2E7D32]">
-                        <span>Coupon ({appliedCode})</span>
+                        <span className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[16px]">sell</span>
+                          Coupon ({appliedCode})
+                        </span>
                         <span className="font-semibold">- ₹ {inr(couponDiscount)}</span>
                       </div>
                     )}
@@ -855,7 +920,10 @@ const CartScreen = () => {
                     <div className="h-px bg-[#dee9fc] my-1"></div>
                     <div className="flex justify-between items-center pt-0.5">
                       <div>
-                        <span className="text-[16px] leading-6 font-semibold text-[#121c2a]">To Pay</span>
+                        <span className="flex items-center gap-1.5 text-[16px] leading-6 font-semibold text-[#121c2a]">
+                          <span className="material-symbols-outlined text-[20px] text-[#B8860B]">payments</span>
+                          To Pay
+                        </span>
                         {savedAmount > 0 && (
                           <p className="slide-down text-[10px] leading-[14px] text-[#2E7D32] font-medium">
                             Saved ₹ {inr(savedAmount)} on this order
@@ -883,86 +951,58 @@ const CartScreen = () => {
                 </div>
               </div>
             )}
+
+            {/* ---------- Pay (policy ke neeche, scroll content ke andar) ---------- */}
+            {!isEmpty && (
+              <div className="px-4 mb-4 fade-up">
+                <div className="bg-white rounded-xl p-3.5 shadow-sm flex items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] leading-[14px] text-[#404943] tracking-wider uppercase font-semibold">
+                      Total to Pay
+                    </span>
+                    <span className="text-[24px] tracking-tight font-bold text-[#121c2a] leading-none">
+                      ₹ {inr(animatedTotal)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handlePay}
+                    disabled={payState !== "idle" || isEmpty || anyBusy}
+                    className={`flex-1 max-w-[200px] h-11 bg-[#F8CB46] text-black rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-[#e0b530] active:scale-[0.98] transition-all disabled:opacity-70 ${payState === "idle" && !anyBusy ? "pay-shine" : ""}`}
+                  >
+                    {payState === "idle" && (
+                      <>
+                        <span>Proceed to Pay</span>
+                        <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                      </>
+                    )}
+                    {payState === "loading" && (
+                      <>
+                        <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                        <span>Securing...</span>
+                      </>
+                    )}
+                    {payState === "done" && (
+                      <>
+                        <span className="material-symbols-outlined check-pop text-[20px]">check_circle</span>
+                        <span>Redirecting</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Pay button ke neeche khaali jagah (scroll karne par button screen ke edge/nav se door rahe) */}
+            {!isEmpty && (
+              <div
+                aria-hidden="true"
+                className="shrink-0"
+                style={{ height: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
+              />
+            )}
           </div>
         </main>
 
-            {/* ---------- Checkout Bar (scroll area ke bahar, hamesha neeche fixed) ---------- */}
-            {!isEmpty && (
-              <div className="shrink-0 relative z-40 bg-[#f8f9ff]/95 backdrop-blur-md px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(253,214,2,0.12)]">
-                <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] leading-[14px] text-[#404943] tracking-wider uppercase font-semibold">
-                      Total to Pay
-                    </span>
-                    <span className="text-[24px] tracking-tight font-bold text-[#121c2a] leading-none">
-                      ₹ {inr(animatedTotal)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handlePay}
-                    disabled={payState !== "idle" || isEmpty || anyBusy}
-                    className={`flex-1 max-w-[200px] h-11 bg-[#F8CB46] text-black rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-[#e0b530] active:scale-[0.98] transition-all disabled:opacity-70 ${payState === "idle" && !anyBusy ? "pay-shine" : ""}`}
-                  >
-                    {payState === "idle" && (
-                      <>
-                        <span>Proceed to Pay</span>
-                        <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                      </>
-                    )}
-                    {payState === "loading" && (
-                      <>
-                        <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                        <span>Securing...</span>
-                      </>
-                    )}
-                    {payState === "done" && (
-                      <>
-                        <span className="material-symbols-outlined check-pop text-[20px]">check_circle</span>
-                        <span>Redirecting</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-            {!isEmpty && (
-              <div className="bg-[#f8f9ff]/95 backdrop-blur-md px-4 py-3 shadow-[0_-4px_16px_rgba(253,214,2,0.12)]">
-                <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] leading-[14px] text-[#404943] tracking-wider uppercase font-semibold">
-                      Total to Pay
-                    </span>
-                    <span className="text-[24px] tracking-tight font-bold text-[#121c2a] leading-none">
-                      ₹ {inr(animatedTotal)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handlePay}
-                    disabled={payState !== "idle" || isEmpty || anyBusy}
-                    className={`flex-1 max-w-[200px] h-11 bg-[#F8CB46] text-black rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-[#e0b530] active:scale-[0.98] transition-all disabled:opacity-70 ${payState === "idle" && !anyBusy ? "pay-shine" : ""}`}
-                  >
-                    {payState === "idle" && (
-                      <>
-                        <span>Proceed to Pay</span>
-                        <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                      </>
-                    )}
-                    {payState === "loading" && (
-                      <>
-                        <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                        <span>Securing...</span>
-                      </>
-                    )}
-                    {payState === "done" && (
-                      <>
-                        <span className="material-symbols-outlined check-pop text-[20px]">check_circle</span>
-                        <span>Redirecting</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
 
         {/* ---------- Bottom Navigation (Proceed to Pay bar ke neeche) ---------- */}
        

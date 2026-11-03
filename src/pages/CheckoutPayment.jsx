@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import {placeOrderAPI} from '../services/orderplaceService.js';
+import LocationChip from '../components/LocationChip.jsx';
+import { getSelectedAddress, subscribeToSelectedAddress } from '../services/selectedAddress.js';
 
 /* ================= HELPERS ================= */
 
@@ -65,15 +68,35 @@ export default function CheckoutPayment({ onBack, onPayNow }) {
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    items = [],
-    subtotal = 0,
-    handlingFee = 0,
-    deliveryFee = 0,
-    savedAmount = 0,
-    total = 0,
-    coupon = '',
-    couponApplied = false,
-  } = location.state || {};
+  items = [],
+  subtotal = 0,
+  handlingFee = 0,
+  deliveryFee = 0,
+  discount = 0,
+  savedAmount = 0,
+  total = 0,
+  coupon = "",
+  couponApplied = false,
+  address: addressFromCart = null,
+} = location.state || {};
+
+// const address = addressFromCart || getSelectedAddress();
+  const [address, setAddress] = useState(() => getSelectedAddress());
+
+  useEffect(() => subscribeToSelectedAddress(setAddress), []);
+
+console.log("Cart data received in CheckoutPayment:", {
+  items,
+  subtotal,
+  handlingFee,
+  deliveryFee,
+  discount,
+  savedAmount,
+  total,
+  coupon,
+  couponApplied,
+  address,
+});
 
   /* ---- payment state ---- */
   const [method, setMethod] = useState('card');
@@ -111,7 +134,7 @@ export default function CheckoutPayment({ onBack, onPayNow }) {
 
   const finish = (info) => {
     if (onPayNow) onPayNow(info);
-    else navigate('/Confirmorder', { state: { ...(location.state || {}), payment: info } });
+    else navigate('/Confirmorder', { state: { ...(location.state || {}), address, payment: info } });
   };
 
   /* ---- select helpers ---- */
@@ -205,7 +228,7 @@ export default function CheckoutPayment({ onBack, onPayNow }) {
         ? `UPI (${upiId.trim()})`
         : METHOD_LABELS[method];
 
-    later(() => {
+    later(async() => {
       if (shouldFail) {
         setStatus('failed');
         setStatusMsg('Payment declined by your bank. Please try another method.');
@@ -218,10 +241,51 @@ export default function CheckoutPayment({ onBack, onPayNow }) {
         amount: total,
         status: method === 'cod' ? 'PENDING_COD' : 'PAID',
       };
-      setPaymentInfo(info);
-      setStatus('success');
-      later(() => finish(info), 2000);
-    }, 2200);
+      try{
+          const deliveryAddress = address || getSelectedAddress();
+          if (!deliveryAddress) {
+      throw new Error("Delivery address missing. Please select an address.");
+    }
+       setStatusMsg("Saving your order...");
+       const result = await placeOrderAPI({
+      items,
+      address: deliveryAddress,
+      paymentMethod: method === "cod" ? "COD" : "Online",
+      billDetails: {
+        itemTotal: subtotal,
+        handlingFee,
+        deliveryFee,
+        discount,
+        savedAmount,
+      },
+      coupon: {
+        code: coupon,
+        applied: couponApplied,
+      },
+    });
+     if (!result?.success || !result?.order?._id || !result?.order?.orderId) {
+      throw new Error("Order save nahi ho saka. Please try again.");
+    }
+
+    const completedPaymentInfo = {
+      ...info,
+      orderId: result.order.orderId,
+    };
+    setPaymentInfo(completedPaymentInfo);
+
+     setStatus("success");
+    setStatusMsg("Order placed successfully!");
+
+    // Navigate only after MongoDB confirms the order was saved.
+    later(() => finish(completedPaymentInfo), 1500);
+  } catch (err) {
+    console.error("Place order error:", err);
+    setStatus("failed");
+    setStatusMsg(
+      err.message || "Order place nahi ho saka. Please try again."
+    );
+  }
+}, 2200);
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.qty, 0);
@@ -252,6 +316,11 @@ export default function CheckoutPayment({ onBack, onPayNow }) {
         <div className="flex-1 overflow-y-auto px-5 pb-6 text-sm" data-purpose="checkout-content">
           {/* BEGIN: OrderAndDeliveryInfo */}
           <section className="mt-2" data-purpose="delivery-timeline">
+            <div className="mb-2">
+              <p className="text-[12px] font-semibold text-gray-800">
+                Total Items: {totalItems}
+              </p>
+            </div>
             {/* Store Details */}
             <div className="flex items-start">
               <div className="mt-0.5 text-gray-400">
@@ -267,24 +336,19 @@ export default function CheckoutPayment({ onBack, onPayNow }) {
                 </p>
               </div>
             </div>
+            <div className="ml-8 mt-2">
+              
+            </div>
 
             {/* Vertical dashed connector */}
-            <div className="border-l-2 border-dashed border-gray-400 h-[28px] ml-[10px]"></div>
+            {/* <div className="border-l-2 border-dashed border-gray-400 h-[28px] ml-[10px]"></div> */}
 
             {/* Destination Address */}
             <div className="flex items-start">
-              <div className="mt-0.5 text-gray-400">
-                <svg className="w-5 h-5 stroke-current stroke-[1.5] fill-none" viewBox="0 0 24 24">
-                  <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <div className="ml-3.5 pr-2">
-                <h2 className="text-[13px] font-semibold text-gray-800 leading-tight">Home Adress</h2>
-                <p className="text-[11px] text-gray-400 leading-tight mt-0.5">
-                  D-96, Kamla Nagar, near North Campus, DU, New Delhi, Delhi 110007
-                </p>
-              </div>
+              <LocationChip
+                className="!mt-0 !max-w-full border border-gray-200 bg-white"
+                ariaLabel="Change delivery address"
+              />
             </div>
             {items.map((item) => (
               <div
@@ -657,7 +721,8 @@ export default function CheckoutPayment({ onBack, onPayNow }) {
                   {paymentInfo.status === 'PENDING_COD' ? 'Pay at delivery via' : 'Paid via'}{' '}
                   {paymentInfo.methodLabel}
                 </p>
-                <p className="text-[11px] text-gray-400">Ref: {paymentInfo.paymentId}</p>
+                <p className="text-[11px] text-gray-400">Order ID: {paymentInfo.orderId}</p>
+                <p className="text-[11px] text-gray-400">Payment Ref: {paymentInfo.paymentId}</p>
                 <button
                   type="button"
                   onClick={() => finish(paymentInfo)}

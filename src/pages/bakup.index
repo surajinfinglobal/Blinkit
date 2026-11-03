@@ -1,266 +1,283 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import BottomNav from '../components/BottomNav.jsx';
-import { categories, productsByCategory } from '../services/homeData.js';
+def rep(old, new, count=1):
+    global s
+    assert old in s, f"missing: {old[:60]!r}"
+    s = s.replace(old, new, count)
 
-const GroceryApp = () => {
-  const navigate = useNavigate();
+# 1) module-level helpers + AddressField
+rep('/* ================= PRODUCT UI COMPONENTS ================= */', '''/* ================= ADDRESS FORM HELPERS ================= */
 
-  // ---- State ----
-  const [activeCategory, setActiveCategory] = useState(categories[0]); // Default 'Vegetables'
-  const [favorites, setFavorites] = useState({});
-  const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    const links = [
-      "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap",
-      "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
-      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    ];
-    const added = links.map((href) => {
-      const l = document.createElement("link");
-      l.rel = "stylesheet";
-      l.href = href;
-      document.head.appendChild(l);
-      return l;
-    });
-    return () => added.forEach((l) => l.remove());
-  }, []);
-
-  const toggleFavorite = (id) =>
-    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
-
-  const handleAddToCart = (name) => {
-    navigate('/Cart');
-  };
-
-  // ---- Star renderer ----
-  const renderStars = (rating) =>
-    Array.from({ length: 5 }).map((_, i) => (
-      <i
-        key={i}
-        className={
-          i < rating
-            ? "fa-solid fa-star"
-            : "fa-regular fa-star text-gray-300"
-        }
-      />
-    ));
-
-  // Get products for the active category from homeData.js and filter by search
-  const currentProducts = (productsByCategory[activeCategory] || []).filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  return (
-    <>
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        body { -webkit-tap-highlight-color: transparent; }
-      `}</style>
-
-      <div className="bg-gray-100 flex justify-center items-start min-h-screen text-gray-800 antialiased font-sans select-none">
-        <div className="relative w-full max-w-[430px] h-[100dvh] sm:h-[932px] max-h-screen bg-white shadow-2xl overflow-hidden flex flex-col justify-between">
-          
-          {/* ---------- Top Header ---------- */}
-          <header className="bg-gradient-to-b from-[#F8CB46] to-[#F8CB46] text-black pt-4 pb-5 px-4 rounded-b-[28px] shadow-sm shrink-0 z-10">
-            
-            {/* Delivery Info + Profile */}
-            <div className="flex justify-between items-center mt-1 px-1">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-black text-[24px] animate-bounce">location_on</span>
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-medium text-black/70 leading-tight">
-                    Delivery in
-                  </span>
-                  <span className="text-[24px] font-black tracking-tight leading-none mt-0.5">
-                    8 Minutes
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end">
-                <button
-                  onClick={() => navigate('/account')}
-                  aria-label="User profile"
-                  className="w-9 h-9 rounded-full bg-[#755b00] flex items-center justify-center active:scale-95 transition-transform"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-white text-[20px]">person</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Search Bar */}
-            <div className="mt-4 relative">
-              <div className="relative flex items-center">
-                <i className="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={`Search in ${activeCategory}...`}
-                  className="w-full h-10 pl-10 pr-9 rounded-full text-sm bg-white text-gray-800 placeholder-gray-400 focus:outline-none shadow-md border-0"
-                />
-                <button
-                  aria-label="Voice search"
-                  className="absolute right-3.5 text-gray-400 hover:text-gray-600 focus:outline-none"
-                >
-                  <i className="fa-solid fa-microphone text-sm"></i>
-                </button>
-              </div>
-            </div>
-          </header>
-
-          {/* ---------- Scrollable Content ---------- */}
-          <main className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 pb-24 space-y-4">
-            
-            {/* Category Tabs (Top Navigation) */}
-            <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-1">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setActiveCategory(cat);
-                    setSearchQuery(""); // Reset search when switching categories
-                  }}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-lg text-[13px] font-bold transition-colors ${
-                    activeCategory === cat
-                      ? "bg-[#F8CB46] text-black shadow-sm"
-                      : "bg-white text-gray-500 hover:bg-gray-50"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </nav>
-
-            {/* Products Section */}
-            <section className="pt-1">
-              <div className="flex items-baseline justify-between mb-2 px-1">
-                <h2 className="text-[16px] font-extrabold text-gray-900 tracking-tight">
-                  {activeCategory}
-                </h2>
-                <span className="text-[11px] text-gray-500 font-medium">
-                  {currentProducts.length} items
-                </span>
-              </div>
-
-              {currentProducts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                    <span className="material-symbols-outlined text-[32px] text-gray-400">search_off</span>
-                  </div>
-                  <h3 className="text-[16px] font-bold text-gray-800">No products found</h3>
-                  <p className="text-[13px] text-gray-500 mt-1 max-w-[200px]">
-                    Try searching for something else.
-                  </p>
-                </div>
-              ) : (
-                /* Horizontal Scroll Rows (Chunking array into rows of 10) */
-                Array.from({ length: Math.ceil(currentProducts.length / 10) }).map((_, rowIndex) => (
-                  <div key={rowIndex} className="flex overflow-x-auto no-scrollbar gap-2.5 mt-2 pb-1">
-                    {currentProducts.slice(rowIndex * 10, rowIndex * 10 + 10).map((product) => (
-                      <article
-                        key={product.id}
-                        className="flex flex-col bg-white rounded-xl p-1.5 shadow-sm relative flex-shrink-0 w-[31%]"
-                      >
-                        {/* Image & Heart Button */}
-                        <div className="relative bg-gray-50 rounded-lg overflow-hidden aspect-square w-full">
-                          <img
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                            src={product.image}
-                          />
-                          <button
-                            aria-label={`Add ${product.name} to favourites`}
-                            onClick={() => toggleFavorite(product.id)}
-                            className={`absolute top-1.5 right-1.5 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center shadow-sm ${
-                              favorites[product.id] ? "text-red-500" : "text-gray-400"
-                            }`}
-                          >
-                            <i className={`text-[10px] ${favorites[product.id] ? "fa-solid fa-heart" : "fa-regular fa-heart"}`}></i>
-                          </button>
-                        </div>
-
-                        {/* Details */}
-                        <div className="flex flex-col flex-1 mt-1.5 px-0.5">
-                          <div className="flex items-center space-x-0.5 text-[8px] text-[#E68A2E]">
-                            {renderStars(product.rating || 4)}
-                          </div>
-                          <h3 className="text-[11px] font-semibold text-gray-800 leading-tight mt-0.5 truncate">
-                            {product.name}
-                          </h3>
-                          <div className="flex items-center justify-between mt-1 gap-1">
-                            <span className="text-[10px] font-bold text-gray-800">
-                              {product.price}
-                            </span>
-                            <button
-                              onClick={() => handleAddToCart(product.name)}
-                              className="flex items-center justify-center px-1.5 py-0.5 rounded border border-[#F8CB46] bg-[#F8CB46]/10 text-gray-800 text-[9px] font-bold active:scale-95 transition-transform"
-                            >
-                              ADD
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ))
-              )}
-            </section>
-          </main>
-
-          {/* ---------- Bottom Navigation ---------- */}
-          <BottomNav />
-        </div>
-      </div>
-    </>
-  );
+const EMPTY_ADDRESS_FORM = {
+  house: "",      // House / Flat no.      (required)
+  apartment: "",  // Apartment / Society   (optional)
+  area: "",       // Area / Street         (required)
+  landmark: "",   // Landmark              (optional)
+  city: "",       // City                  (required)
+  pincode: "",    // Pincode               (required)
 };
 
-export default GroceryApp;
+// Alag fields se ek readable `line` banata hai (header, checkout wagairah isi `line` ko dikhate hain)
+const composeAddressLine = (f) =>
+  [f.house, f.apartment, f.area, f.landmark && `Near ${f.landmark}`, f.city]
+    .map((x) => (x || "").trim())
+    .filter(Boolean)
+    .join(", ");
 
+/*
+  👉 YAHAN apni API call lagao.
+  Jab tak ye promise resolve nahi hota, Save button loading state mein rahega.
+  Fail hone par `throw new Error("...")` karo, wo form ke neeche red text mein dikhega.
 
+  Example:
+    const res = await fetch("/api/addresses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(address),
+    });
+    if (!res.ok) throw new Error("Address save nahi ho paya");
+    return await res.json();   // server se id/extra fields aayein to unhe return karo
+*/
+const saveAddressToServer = async (address) => {
+  await new Promise((r) => setTimeout(r, 900)); // dummy delay – API lagate hi hata dena
+  return address;
+};
 
+const AddressField = ({ label, required, error, children }) => (
+  <label className="block">
+    <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-gray-600">
+      {label}
+      {required ? (
+        <span className="text-red-500">*</span>
+      ) : (
+        <span className="font-normal text-gray-400">(optional)</span>
+      )}
+    </span>
+    {children}
+    {error && (
+      <span role="alert" className="mt-1 block text-[10px] text-red-500">
+        {error}
+      </span>
+    )}
+  </label>
+);
 
+/* ================= PRODUCT UI COMPONENTS ================= */''')
 
- {!isEmpty && (
-              <div className="sticky bottom-0 z-40 bg-[#f8f9ff]/95 backdrop-blur-md px-4 py-3 shadow-[0_-4px_16px_rgba(253,214,2,0.12)]">
-                <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] leading-[14px] text-[#404943] tracking-wider uppercase font-semibold">
-                      Total to Pay
-                    </span>
-                    <span className="text-[24px] tracking-tight font-bold text-[#121c2a] leading-none">
-                      ₹ {inr(animatedTotal)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handlePay}
-                    disabled={payState !== "idle" || isEmpty || anyBusy}
-                    className={`flex-1 max-w-[200px] h-11 bg-[#F8CB46] text-black rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-[#e0b530] active:scale-[0.98] transition-all disabled:opacity-70 ${payState === "idle" && !anyBusy ? "pay-shine" : ""}`}
-                  >
-                    {payState === "idle" && (
-                      <>
-                        <span>Proceed to Pay</span>
-                        <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                      </>
+# 2) state
+rep('''  const [newLine, setNewLine] = useState("");
+  const [newPincode, setNewPincode] = useState("");
+  const [formError, setFormError] = useState("");''', '''  const [form, setForm] = useState(EMPTY_ADDRESS_FORM);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formError, setFormError] = useState(""); // API / general error
+  const [saving, setSaving] = useState(false);    // true => Save button loading''')
+
+# 3) open/close sheet
+rep('''    setLocError("");
+    setFormError("");
+    setShowSheet(true);
+  };
+  const closeSheet = () => {
+    if (locating) return;''', '''    setLocError("");
+    setFormError("");
+    setFieldErrors({});
+    setShowSheet(true);
+  };
+  const closeSheet = () => {
+    if (locating || saving) return; // save chal raha ho to sheet band nahi hogi''')
+
+# 4) saveNewAddress
+a = s.index("  const saveNewAddress = () => {")
+b = s.index("  // ---- Star renderer ----")
+s = s[:a] + '''  const updateField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev));
+    setFormError("");
+  };
+
+  const saveNewAddress = async () => {
+    if (saving) return;
+
+    // ---- Validation ----
+    const errs = {};
+    if (!form.house.trim()) errs.house = "House / Flat no. daalo";
+    if (form.area.trim().length < 3) errs.area = "Area / Street daalo";
+    if (form.city.trim().length < 2) errs.city = "City daalo";
+    if (!/^\\d{6}$/.test(form.pincode)) errs.pincode = "6-digit valid pincode daalo";
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    const addr = {
+      id: `a${Date.now()}`,
+      label: newLabel,
+      house: form.house.trim(),
+      apartment: form.apartment.trim(),
+      area: form.area.trim(),
+      landmark: form.landmark.trim(),
+      city: form.city.trim(),
+      pincode: form.pincode,
+      line: composeAddressLine(form), // purane code (header/checkout) ke liye
+    };
+
+    try {
+      setSaving(true); // 👈 loading ON (API call shuru)
+      setFormError("");
+      const saved = (await saveAddressToServer(addr)) || {};
+      const finalAddr = { ...addr, ...saved }; // server ka id/extra data merge
+
+      setAddresses((prev) => [...prev, finalAddr]);
+      setSelectedId(finalAddr.id);
+      setForm(EMPTY_ADDRESS_FORM);
+      setFieldErrors({});
+      setNewLabel("Home");
+      setShowSheet(false);
+    } catch (err) {
+      setFormError(err?.message || "Address save nahi ho paya. Dobara try karo.");
+    } finally {
+      setSaving(false); // 👈 loading OFF
+    }
+  };
+
+''' + s[b:]
+
+# 5) back button guard
+rep('''                        onClick={() => {
+                          setSheetView("list");
+                          setFormError("");
+                        }}
+                        aria-label="Back"''', '''                        disabled={saving}
+                        onClick={() => {
+                          setSheetView("list");
+                          setFormError("");
+                          setFieldErrors({});
+                        }}
+                        aria-label="Back"''')
+
+# 6) ADD VIEW jsx
+start_marker = "                {/* ---------- ADD VIEW ---------- */}"
+end_marker = "\n              </div>\n            </div>,\n            document.body"
+a = s.index(start_marker)
+b = s.index(end_marker)
+new_view = '''                {/* ---------- ADD VIEW ---------- */}
+                {sheetView === "add" && (
+                  <fieldset disabled={saving} className="m-0 min-w-0 space-y-3 border-0 p-0">
+                    {/* Label chips */}
+                    <div className="flex gap-2">
+                      {["Home", "Work", "Other"].map((l) => (
+                        <button
+                          key={l}
+                          type="button"
+                          onClick={() => setNewLabel(l)}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${
+                            newLabel === l
+                              ? "bg-[#F8CB46] border-[#F8CB46] text-black"
+                              : "bg-white border-gray-200 text-gray-500"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">{LABEL_ICONS[l]}</span>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+
+                    <AddressField label="House / Flat no." required error={fieldErrors.house}>
+                      <input
+                        type="text"
+                        value={form.house}
+                        onChange={(e) => updateField("house", e.target.value)}
+                        placeholder="e.g. D-96, Flat 402"
+                        autoComplete="address-line1"
+                        className={`${inputCls} ${fieldErrors.house ? "!border-red-400" : ""}`}
+                      />
+                    </AddressField>
+
+                    <AddressField label="Apartment / Society">
+                      <input
+                        type="text"
+                        value={form.apartment}
+                        onChange={(e) => updateField("apartment", e.target.value)}
+                        placeholder="e.g. Shree Residency"
+                        autoComplete="address-line2"
+                        className={inputCls}
+                      />
+                    </AddressField>
+
+                    <AddressField label="Area / Street" required error={fieldErrors.area}>
+                      <input
+                        type="text"
+                        value={form.area}
+                        onChange={(e) => updateField("area", e.target.value)}
+                        placeholder="e.g. Kamla Nagar"
+                        autoComplete="address-level3"
+                        className={`${inputCls} ${fieldErrors.area ? "!border-red-400" : ""}`}
+                      />
+                    </AddressField>
+
+                    <AddressField label="Landmark">
+                      <input
+                        type="text"
+                        value={form.landmark}
+                        onChange={(e) => updateField("landmark", e.target.value)}
+                        placeholder="e.g. Near North Campus"
+                        className={inputCls}
+                      />
+                    </AddressField>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <AddressField label="City" required error={fieldErrors.city}>
+                        <input
+                          type="text"
+                          value={form.city}
+                          onChange={(e) => updateField("city", e.target.value)}
+                          placeholder="e.g. New Delhi"
+                          autoComplete="address-level2"
+                          className={`${inputCls} ${fieldErrors.city ? "!border-red-400" : ""}`}
+                        />
+                      </AddressField>
+                      <AddressField label="Pincode" required error={fieldErrors.pincode}>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={form.pincode}
+                          onChange={(e) => updateField("pincode", e.target.value.replace(/\\D/g, ""))}
+                          placeholder="110007"
+                          autoComplete="postal-code"
+                          className={`${inputCls} ${fieldErrors.pincode ? "!border-red-400" : ""}`}
+                        />
+                      </AddressField>
+                    </div>
+
+                    {formError && (
+                      <p role="alert" className="text-[11px] text-red-500">
+                        {formError}
+                      </p>
                     )}
-                    {payState === "loading" && (
-                      <>
-                        <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                        <span>Securing...</span>
-                      </>
-                    )}
-                    {payState === "done" && (
-                      <>
-                        <span className="material-symbols-outlined check-pop text-[20px]">check_circle</span>
-                        <span>Redirecting</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
+
+                    <button
+                      type="button"
+                      onClick={saveNewAddress}
+                      disabled={saving}
+                      aria-busy={saving}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F8CB46] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-70"
+                    >
+                      {saving ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                          SAVING ADDRESS...
+                        </>
+                      ) : (
+                        <>SAVE &amp; USE THIS ADDRESS</>
+                      )}
+                    </button>
+                  </fieldset>
+                )}'''
+s = s[:a] + new_view + s[b:]
+
+open(p, "w", encoding="utf-8").write(s)
+print("ok")
+PYEOF
+cd /tmp/chk && npx esbuild /mnt/user-data/outputs/GroceryApp.jsx --loader:.jsx=jsx --log-level=warning --outfile=/tmp/chk/home.js && echo "SYNTAX OK"; grep -n "newLine\|newPincode" /mnt/user-data/outputs/GroceryApp.jsx || echo "no leftover refs"
+Output
+
+ok
+SYNTAX OK
+no leftover refs

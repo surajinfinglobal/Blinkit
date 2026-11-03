@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 
 export async function registerUser(userData) {
@@ -19,19 +19,27 @@ export async function registerUser(userData) {
   return data
 }
 
-export const addAddressAPI = async (addressData) => {
-  const token = localStorage.getItem('token');
-  const response = await fetch('http://localhost:5000/api/addresses', {
-    method: 'POST',
+export async function getUserProfile() {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    throw new Error('Please log in to view your profile.')
+  }
+
+  const response = await fetch(`${API_URL}/user/profile`, {
     headers: {
-      'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(addressData),
-  });
+  })
+  const data = await response.json()
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Address save nahi ho paya');
+    throw new Error(data.message || 'Profile fetch nahi ho paya')
   }
-  return response.json();
-};
+  if (!data.success || !data.user) {
+    throw new Error('Profile response is invalid')
+  }
+
+  return data.user
+}
+
+export const profile = getUserProfile

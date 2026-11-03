@@ -1,18 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bgImg from '../assets/blinkit_account.png'; 
 import { registerUser } from '../services/api'; // Make sure your API function is named this
+import PhoneVerify from './PhoneVerify.jsx';
+import PhoneNumberField from '../components/PhoneNumberField.jsx';
 
 export default function CreateAccount({ onContinue, onGoogle, onFacebook, onLoginClick }) {
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(''); // Error message state
+  const [step, setStep] = useState('register');
   const inputRef = useRef(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -43,8 +42,18 @@ export default function CreateAccount({ onContinue, onGoogle, onFacebook, onLogi
     }
   }
 
+  const phoneInput = (
+    <PhoneNumberField
+      inputRef={inputRef}
+      phone={phone}
+      onPhoneChange={setPhone}
+      onFocus={() => setStep('verify')}
+    />
+  );
+
   return (
-    <div className="flex items-center justify-center min-h-screen overflow-hidden text-slate-800 antialiased font-sans bg-[#F8CB46]">
+    <>
+    <div aria-hidden={step === 'verify'} className="flex items-center justify-center min-h-screen overflow-hidden text-slate-800 antialiased font-sans bg-[#F8CB46]">
       <div className="mobile-frame w-full relative flex flex-col max-w-[440px] h-[100dvh] max-h-[900px] mx-auto shadow-2xl bg-white overflow-hidden sm:rounded-[40px] sm:border-[8px] sm:border-slate-300">
         
         {/* Top Illustration Area */}
@@ -77,20 +86,7 @@ export default function CreateAccount({ onContinue, onGoogle, onFacebook, onLogi
           <form onSubmit={handleSubmit} className="w-full max-w-[340px] space-y-3 mb-5 text-left">
             
             {/* Phone Input */}
-            <div>
-              <label className="sr-only" htmlFor="number">Mobile Number</label>
-              <input
-                ref={inputRef}
-                id="number"
-                type="tel"
-                inputMode="numeric"
-                placeholder="Enter Mobile Number"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                disabled={loading}
-                className="w-full border border-neutral-300 rounded-xl px-4 py-3 text-[15px] focus:outline-none focus:border-[#F8CB46] focus:ring-1 focus:ring-[#F8CB46] text-neutral-800 placeholder-neutral-400 bg-white transition-all disabled:opacity-60"
-              />
-            </div>
+            {step === 'register' && phoneInput}
 
             {/* Error Message Display */}
             {error && (
@@ -156,6 +152,23 @@ export default function CreateAccount({ onContinue, onGoogle, onFacebook, onLogi
         </section>
       </div>
     </div>
+    {step === 'verify' && (
+      <div className="backdrop-in fixed inset-0 z-50 overflow-y-auto bg-black/45 backdrop-blur-[2px]">
+        <div className="sheet-up">
+          <div className="min-h-screen flex items-center justify-center p-0 sm:p-4 select-none font-sans antialiased">
+            <PhoneVerify
+              maxLength={10}
+              phone={phone}
+              onPhoneChange={setPhone}
+              phoneInput={phoneInput}
+              phoneInputRef={inputRef}
+              onBack={() => setStep('register')}
+            />
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
