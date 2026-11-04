@@ -1,20 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-green: #F8CB46;
-  --color-verify-green: #F8CB46;
+  --color-brand-yellow: #F7D61D;
+  --color-action-green: #0C831F;
+  --color-page-background: #F5F7FA;
+  --color-gray-100: #F5F7FA;
   --color-keypad-bg: #f3f4f6;
   --color-keypad-text: #111827;
   --color-subtext-gray: #6b7280;
-  --font-sans: 'Gilroy', sans-serif;
+  --font-sans: 'Outfit', sans-serif;
 }
 
-.btn-green-theme { background-color: #F8CB46; }
-.btn-green-theme:active { background-color: #F8CB46; }
+.btn-green-theme { background-color: #0C831F; color: #ffffff; }
+.btn-green-theme:active { background-color: #0C831F; }
 
-.active-dot { background-color: #F8CB46; }
+.active-dot { background-color: #F7D61D; }
 
-body { background-color: #ffffff; font-family: 'Gilroy', sans-serif; }
+html, body, #root { font-family: 'Outfit', sans-serif; }
+
+html, body { background-color: #F5F7FA; }
+
+html.app-scrollbars-hidden,
+html.app-scrollbars-hidden body,
+html.app-scrollbars-hidden #root,
+html.app-scrollbars-hidden * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html.app-scrollbars-hidden::-webkit-scrollbar,
+html.app-scrollbars-hidden *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
 
 .material-symbols-outlined { font-size: 16px !important; }
 

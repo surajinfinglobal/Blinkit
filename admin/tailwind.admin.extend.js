@@ -30,7 +30,7 @@ export default {
   },
   fontFamily: Object.fromEntries(
     ["headline-sm","body-lg","label-md","headline-lg","headline-md","headline-xl","body-md","body-sm",
-     "headline-xl-mobile","headline-lg-mobile","label-lg","label-sm"].map((k) => [k, ["Plus Jakarta Sans", "sans-serif"]])
+     "headline-xl-mobile","headline-lg-mobile","label-lg","label-sm"].map((k) => [k, ["Outfit", "sans-serif"]])
   ),
   fontSize: {
     "headline-sm": ["17px", { lineHeight: "22px", letterSpacing: "-0.01em", fontWeight: "600" }],

@@ -102,7 +102,7 @@ async function handleSubmit(event) {
     <>
       <LoginStyles />
       <div aria-hidden={step === 'verify'} className="min-h-screen flex items-center justify-center bg-gray-100 p-0 sm:p-4 select-none font-sans antialiased">
-        <main className="relative flex h-[100dvh] w-full max-w-[390px] flex-col justify-between overflow-hidden bg-white shadow-2xl sm:h-[844px] sm:max-h-[calc(100dvh-2rem)] sm:rounded-[48px] sm:border-[6px] sm:border-neutral-900/10 screen-in">
+        <main className="relative flex h-[100dvh] w-full max-w-[450px] flex-col justify-between overflow-hidden bg-white shadow-2xl sm:h-[844px] sm:max-h-[calc(100dvh-2rem)] sm:rounded-[48px]   screen-in">
           <div className="flex flex-1 flex-col justify-between px-6 pb-4 pt-8">
 
             {/* ================= Illustration + LOGIN badge ================= */}
@@ -112,7 +112,7 @@ async function handleSubmit(event) {
               </div>
 
               {/* <div className="mt-5 flex flex-col items-center">
-                <div className="badge-pop badge-shine relative overflow-hidden rounded-xl bg-[#F8CB46] px-8 py-2 text-base font-bold tracking-[0.2em] text-black shadow-sm">
+                <div className="badge-pop badge-shine relative overflow-hidden rounded-xl bg-[#F7D61D] px-8 py-2 text-base font-bold tracking-[0.2em] text-black shadow-sm">
                   LOGIN
                 </div>
                 <p className="fade-up mt-3 text-center text-[13px] text-neutral-500" style={{ animationDelay: '350ms' }}>
@@ -234,69 +234,6 @@ function FacebookIcon() {
 
 /*
   Login hero image.
-  FIX: pehle saare shapes (bag, handles, background) ek hi #F8CB46 colour ke the,
+  FIX: pehle saare shapes (bag, handles, background) ek hi #F7D61D colour ke the,
   isliye bag background mein gayab ho jata tha. Ab colours alag hain + animations.
 */
-function LoginHeroImage() {
-  return (
-    <svg
-      className="w-full h-full"
-      fill="none"
-      viewBox="0 0 200 170"
-      xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="heroBg" x1="0" y1="0" x2="200" y2="170" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFE9A0" />
-          <stop offset="1" stopColor="#F8CB46" />
-        </linearGradient>
-      </defs>
-
-      <rect width="200" height="170" fill="url(#heroBg)" />
-
-      {/* Background circles (halka drift) */}
-      <circle className="svg-anim drift-a" cx="170" cy="30" r="50" fill="#FFFFFF" opacity="0.35" />
-      <circle className="svg-anim drift-b" cx="30" cy="140" r="45" fill="#F59E0B" opacity="0.25" />
-
-      {/* Sparkles */}
-      <circle className="svg-anim twinkle" cx="28" cy="34" r="3" fill="#FFFFFF" />
-      <circle className="svg-anim twinkle" style={{ animationDelay: '0.7s' }} cx="172" cy="84" r="2.4" fill="#FFFFFF" />
-      <circle className="svg-anim twinkle" style={{ animationDelay: '1.4s' }} cx="46" cy="96" r="2" fill="#FFFFFF" />
-
-      {/* Shopping bag (floating) */}
-      <g transform="translate(60, 50)">
-        <g className="svg-anim bag-float">
-          {/* Bag body */}
-          <path d="M10 30 L15 100 L75 100 L80 30 Z" fill="#FFFFFF" />
-          <path d="M46 30 L46 100 L75 100 L80 30 Z" fill="#F1F1EE" />
-          <rect x="5" y="25" width="80" height="10" rx="3" fill="#2E7D32" />
-
-          {/* Bag handles */}
-          <path d="M25 25 V15 C25 5, 65 5, 65 15 V25" stroke="#2E7D32" strokeWidth="4" fill="none" strokeLinecap="round" />
-
-          {/* Fruits sticking out */}
-          <circle cx="30" cy="22" r="12" fill="#F59E0B" />
-          <path d="M30 10 Q33 8 35 11" stroke="#6D4C41" strokeWidth="2" fill="none" strokeLinecap="round" />
-
-          <circle cx="55" cy="20" r="14" fill="#EF4444" />
-          <path d="M55 6 Q58 4 60 7" stroke="#6D4C41" strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M50 8 Q56 4 62 8 Q56 12 50 8" fill="#4CAF50" />
-
-          <path d="M42 18 Q35 12 30 24 Q42 28 48 22 Z" fill="#FBBF24" />
-        </g>
-      </g>
-
-      {/* Location pin badge (bounce + ring) */}
-      <g transform="translate(130, 110)">
-        <circle className="svg-anim pin-ring" cx="15" cy="15" r="18" fill="#1A1C1B" opacity="0.35" />
-        <g className="svg-anim pin-bounce">
-          <circle cx="15" cy="15" r="18" fill="#1A1C1B" />
-          <path d="M15 8 C11 8 8 11 8 15 C8 21 15 26 15 26 C15 26 22 21 22 15 C22 11 19 8 15 8 Z" fill="#FFFFFF" />
-          <circle cx="15" cy="15" r="3" fill="#1A1C1B" />
-        </g>
-      </g>
-    </svg>
-  );
-}

@@ -16,7 +16,7 @@ const SUPPORT = {
 
 const STATUS_STYLES = {
   'On the way': 'bg-amber-50 text-amber-700',
-  Delivered: 'bg-green-50 text-green-700',
+  Delivered: 'bg-[#EAF5EC] text-[#0C831F]',
   Cancelled: 'bg-red-50 text-red-600',
 };
 
@@ -250,7 +250,7 @@ function Toggle({ checked, onChange, label }) {
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300 ${
-        checked ? 'bg-[#F8CB46]' : 'bg-gray-200'
+        checked ? 'bg-[#F7D61D]' : 'bg-gray-200'
       }`}
     >
       <span
@@ -263,7 +263,7 @@ function Toggle({ checked, onChange, label }) {
 }
 
 const inputCls =
-  'w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-[13px] text-gray-800 outline-none transition focus:border-[#F8CB46] focus:ring-1 focus:ring-[#F8CB46]';
+  'w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-[13px] text-gray-800 outline-none transition focus:border-[#F7D61D] focus:ring-1 focus:ring-[#F7D61D]';
 
 /* ================= SHEETS ================= */
 
@@ -413,7 +413,7 @@ function SettingsSheet({ settings, onChange, onClose }) {
             onClick={() => onChange({ ...settings, language: l })}
             className={`rounded-full border px-4 py-1.5 text-[12px] font-semibold transition ${
               settings.language === l
-                ? 'border-[#F8CB46] bg-[#F8CB46] text-black'
+                ? 'border-[#F7D61D] bg-[#F7D61D] text-black'
                 : 'border-gray-200 bg-white text-gray-500'
             }`}
           >
@@ -446,12 +446,12 @@ function RateSheet({ onClose, onToast }) {
       {done ? (
         <div className="flex flex-col items-center py-6 text-center">
           <svg className="h-20 w-20" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="36" fill="#E8F5E9" />
-            <path className="check-draw" d="M25 41 L36 52 L56 30" fill="none" stroke="#2E9E4F" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="40" cy="40" r="36" fill="#EAF5EC" />
+            <path className="check-draw" d="M25 41 L36 52 L56 30" fill="none" stroke="#259535" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <h4 className="mt-4 text-[16px] font-bold text-gray-900">Thank you!</h4>
           <p className="mt-1 text-[12px] text-gray-500">Aapka feedback hamare liye bahut kaam ka hai.</p>
-          <button type="button" onClick={onClose} className="mt-5 rounded-xl bg-[#F8CB46] px-8 py-3 text-[12px] font-bold tracking-wider text-black">
+          <button type="button" onClick={onClose} className="mt-5 rounded-xl bg-[#F7D61D] px-8 py-3 text-[12px] font-bold tracking-wider text-black">
             DONE
           </button>
         </div>
@@ -472,7 +472,7 @@ function RateSheet({ onClose, onToast }) {
                   key={n <= shown ? `on-${n}-${rating}` : `off-${n}`}
                   viewBox="0 0 24 24"
                   className={`h-10 w-10 transition-colors duration-200 ${
-                    n <= shown ? 'fill-[#F8CB46] star-pop' : 'fill-gray-200'
+                    n <= shown ? 'fill-[#F7D61D] star-pop' : 'fill-gray-200'
                   }`}
                 >
                   <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
@@ -494,7 +494,7 @@ function RateSheet({ onClose, onToast }) {
             type="button"
             onClick={submit}
             disabled={!rating}
-            className="mt-4 w-full rounded-xl bg-[#F8CB46] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-40"
+            className="mt-4 w-full rounded-xl bg-[#F7D61D] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-40"
           >
             SUBMIT
           </button>
@@ -545,7 +545,7 @@ function ReferSheet({ user, onClose, onToast }) {
         <button
           type="button"
           onClick={handleShare}
-          className="flex-1 rounded-xl bg-[#F8CB46] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99]"
+          className="flex-1 rounded-xl bg-[#F7D61D] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99]"
         >
           SHARE
         </button>
@@ -659,7 +659,7 @@ function EditSheet({ user, onSave, onClose }) {
       <button
         type="button"
         onClick={save}
-        className="mt-5 w-full rounded-xl bg-[#F8CB46] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99]"
+        className="mt-5 w-full rounded-xl bg-[#F7D61D] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99]"
       >
         SAVE CHANGES
       </button>
@@ -776,7 +776,7 @@ export default function UserProfile() {
   return (
     <div className="relative min-h-screen bg-gray-50 pb-24">
       {/* ================= Profile header ================= */}
-      <header className="relative flex flex-col items-center rounded-b-[32px] bg-gradient-to-b from-[#F8CB46] to-[#F8CB46] px-5 pb-14 pt-8 text-black header-in">
+      <header className="relative flex flex-col items-center rounded-b-[32px] bg-gradient-to-b from-[#F7D61D] to-[#F7D61D] px-5 pb-14 pt-8 text-black header-in">
         <button
           type="button"
           aria-label="Edit profile"

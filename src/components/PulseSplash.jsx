@@ -22,7 +22,7 @@ const ElectronicsIcon = () => (
     <rect x="8" y="12" width="40" height="28" rx="3" fill="#2F3A4F" />
     <rect x="11" y="15" width="34" height="22" rx="1.5" fill="#4FC3F7" />
     <circle cx="22" cy="26" r="5" fill="#FFD54F" />
-    <path d="M11 37 L24 26 L33 33 L39 28 L45 33 V37 Z" fill="#43A047" />
+    <path d="M11 37 L24 26 L33 33 L39 28 L45 33 V37 Z" fill="#F7D61D" />
     <path d="M4 42 H52 L48 49 Q47.5 50 46.5 50 H9.5 Q8.5 50 8 49 Z" fill="#B0B8C4" />
     <rect x="22" y="42" width="12" height="2" rx="1" fill="#8A93A0" />
     <rect x="41" y="26" width="17" height="30" rx="3.5" fill="#1F2937" />
@@ -86,10 +86,10 @@ const DairyIcon = () => (
 
 /* ================= CATEGORIES ================= */
 const categoriesData = [
-  { id: 'groceries', Icon: GroceriesIcon, color: '#F8CB46', label: 'Groceries' },
+  { id: 'groceries', Icon: GroceriesIcon, color: '#F7D61D', label: 'Groceries' },
   { id: 'electronics', Icon: ElectronicsIcon, color: '#4FC3F7', label: 'Electronics' },
   { id: 'food', Icon: FoodIcon, color: '#ffb95f', label: 'Food' },
-  { id: 'vegetables', Icon: VegetablesIcon, color: '#83e596', label: 'Vegetables' },
+  { id: 'vegetables', Icon: VegetablesIcon, color: '#F7D61D', label: 'Vegetables' },
   { id: 'fruits', Icon: FruitsIcon, color: '#ff8a80', label: 'Fruits' },
   { id: 'dairy', Icon: DairyIcon, color: '#90caf9', label: 'Dairy' },
 ];
@@ -108,7 +108,7 @@ export default function CategoryPulseSplash() {
   const { Icon } = current;
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#f9f9f7]">
+    <div className="flex items-center justify-center min-h-screen bg-[#F5F7FA]">
       {/* Wrapper */}
       <div className="relative flex flex-col items-center justify-center w-56 h-56">
         

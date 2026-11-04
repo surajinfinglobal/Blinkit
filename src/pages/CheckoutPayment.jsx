@@ -52,15 +52,15 @@ const isValidUpi = (v) => /^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v.trim());
 const Radio = ({ checked }) => (
   <span
     className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${
-      checked ? 'border-[#F8CB46]' : 'border-gray-300'
+      checked ? 'border-[#F7D61D]' : 'border-gray-300'
     }`}
   >
-    {checked && <span className="w-2 h-2 rounded-full bg-[#F8CB46]" />}
+    {checked && <span className="w-2 h-2 rounded-full bg-[#F7D61D]" />}
   </span>
 );
 
 const inputCls =
-  'w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F8CB46] focus:ring-1 focus:ring-[#F8CB46] transition';
+  'w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F7D61D] focus:ring-1 focus:ring-[#F7D61D] transition';
 
 /* ================= COMPONENT ================= */
 
@@ -375,7 +375,7 @@ console.log("Cart data received in CheckoutPayment:", {
               <h2 className="text-[14px] font-bold text-gray-900">Credit/Debit Cards</h2>
               <button
                 onClick={openAddCard}
-                className="text-[10px] font-semibold text-[#F8CB46] hover:text-[#F8CB46] tracking-wider uppercase"
+                className="text-[10px] font-semibold text-[#F7D61D] hover:text-[#F7D61D] tracking-wider uppercase"
                 type="button"
               >
                 ADD NEW CARD
@@ -482,7 +482,7 @@ console.log("Cart data received in CheckoutPayment:", {
                 <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6" viewBox="0 0 48 48">
                     <path d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" fill="#4285F4" />
-                    <path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" fill="#F8CB46" />
+                    <path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" fill="#F7D61D" />
                     <path d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" fill="#FBBC05" />
                     <path d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" fill="#EA4335" />
                   </svg>
@@ -513,8 +513,8 @@ console.log("Cart data received in CheckoutPayment:", {
               {/* UPI */}
               <div>
                 <div onClick={() => chooseMethod('upi')} className="flex items-center py-2.5 cursor-pointer" role="radio" aria-checked={method === 'upi'}>
-                  <div className="w-7 h-7 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
-                    <span className="text-[9px] font-extrabold text-[#2E7D32]">UPI</span>
+                  <div className="w-7 h-7 rounded-full bg-[#EAF5EC] flex items-center justify-center flex-shrink-0">
+                    <span className="text-[9px] font-extrabold text-[#0C831F]">UPI</span>
                   </div>
                   <span className="ml-3.5 flex-1 text-[13px] font-normal text-gray-800">UPI ID</span>
                   <Radio checked={method === 'upi'} />
@@ -592,7 +592,7 @@ console.log("Cart data received in CheckoutPayment:", {
           <button
             onClick={handlePayNow}
             disabled={status === 'processing'}
-            className="w-full bg-[#F8CB46] hover:bg-[#F8CB46] active:scale-[0.99] disabled:opacity-60 transition duration-150 text-black font-bold text-[13px] tracking-wider py-3.5 rounded-xl shadow-sm text-center"
+            className="w-full bg-[#0C831F] hover:bg-[#259535] active:scale-[0.99] disabled:opacity-60 transition duration-150 text-white font-bold text-[13px] tracking-wider py-3.5 rounded-xl shadow-sm text-center"
             type="button"
           >
             {method === 'cod' ? 'PLACE ORDER' : 'PAY NOW'}
@@ -680,7 +680,7 @@ console.log("Cart data received in CheckoutPayment:", {
               <button
                 type="button"
                 onClick={saveCard}
-                className="w-full mt-5 bg-[#F8CB46] active:scale-[0.99] transition text-black font-bold text-[13px] tracking-wider py-3.5 rounded-xl"
+                className="w-full mt-5 bg-[#F7D61D] active:scale-[0.99] transition text-black font-bold text-[13px] tracking-wider py-3.5 rounded-xl"
               >
                 SAVE CARD
               </button>
@@ -693,7 +693,7 @@ console.log("Cart data received in CheckoutPayment:", {
           <div className="absolute inset-0 z-40 bg-white/95 flex flex-col items-center justify-center px-8 text-center">
             {status === 'processing' && (
               <>
-                <div className="w-14 h-14 rounded-full border-4 border-gray-200 border-t-[#F8CB46] animate-spin" />
+                <div className="w-14 h-14 rounded-full border-4 border-gray-200 border-t-[#F7D61D] animate-spin" />
                 <p className="mt-5 text-[14px] font-semibold text-gray-900">{statusMsg}</p>
                 <p className="mt-1 text-[11px] text-gray-400">Please don't press back or close the app</p>
               </>
@@ -702,12 +702,12 @@ console.log("Cart data received in CheckoutPayment:", {
             {status === 'success' && paymentInfo && (
               <>
                 <svg className="w-20 h-20" viewBox="0 0 80 80">
-                  <circle cx="40" cy="40" r="36" fill="#E8F5E9" />
+                  <circle cx="40" cy="40" r="36" fill="#EAF5EC" />
                   <path
                     className="check-draw"
                     d="M25 41 L36 52 L56 30"
                     fill="none"
-                    stroke="#2E9E4F"
+                    stroke="#259535"
                     strokeWidth="6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -726,7 +726,7 @@ console.log("Cart data received in CheckoutPayment:", {
                 <button
                   type="button"
                   onClick={() => finish(paymentInfo)}
-                  className="mt-6 bg-[#F8CB46] text-black font-bold text-[12px] tracking-wider px-8 py-3 rounded-xl"
+                  className="mt-6 bg-[#0C831F] text-white font-bold text-[12px] tracking-wider px-8 py-3 rounded-xl"
                 >
                   CONTINUE
                 </button>
@@ -744,7 +744,7 @@ console.log("Cart data received in CheckoutPayment:", {
                 <button
                   type="button"
                   onClick={() => setStatus('idle')}
-                  className="mt-6 bg-[#F8CB46] text-black font-bold text-[12px] tracking-wider px-8 py-3 rounded-xl"
+                  className="mt-6 bg-[#F7D61D] text-black font-bold text-[12px] tracking-wider px-8 py-3 rounded-xl"
                 >
                   TRY AGAIN
                 </button>

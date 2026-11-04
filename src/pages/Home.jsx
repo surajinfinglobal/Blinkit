@@ -7,6 +7,7 @@ import { addToCart } from "../services/cartService";
 import { getDistanceAPI } from "../services/distanceService.js";
 import { addAddressAPI,getAddressesAPI} from '../services/addressService.js';
 import { setSelectedAddress, subscribeToSelectedAddress } from "../services/selectedAddress.js";
+import { addFavoriteAPI,removeFavoriteAPI } from '../services/favoriteService.js';
 // import CurrentLocation from '../components/CurrentLocation';getAddressesAPI 
 
 /* ================= HELPERS ================= */
@@ -88,8 +89,8 @@ const AddButton = ({ onAdd }) => {
       aria-label="Add to cart"
       className={`flex-shrink-0 flex items-center justify-center min-w-[34px] h-[18px] px-1.5 rounded border text-[9px] font-bold transition-all duration-200 active:scale-90 ${
         state === "added"
-          ? "added-pop border-[#2E9E4F] bg-[#E8F5E9] text-[#2E7D32]"
-          : "border-[#F8CB46] bg-[#F8CB46]/10 text-gray-800 hover:bg-[#F8CB46]/30"
+          ? "added-pop border-[#259535] bg-[#EAF5EC] text-[#0C831F]"
+          : "border-[#F7D61D] bg-[#F7D61D]/10 text-gray-800 hover:bg-[#F7D61D]/30"
       }`}
     >
       {state === "loading" ? (
@@ -338,7 +339,6 @@ const updateField = (field, value) => {
   // Fonts & Icons load karna
   useEffect(() => {
     const links = [
-      "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap",
       "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
       "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     ];
@@ -352,10 +352,30 @@ const updateField = (field, value) => {
     return () => added.forEach((l) => l.remove());
   }, []);
 
-  const toggleFavorite = (id) =>
-    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleFavorite =async (id,productName) =>{
+     const isCurrentlyFav = !!favorites[id];
 
-  // ---- Toast (alert ki jagah) ----
+       setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (isCurrentlyFav) {
+        showToast(`${productName} removed from favourites`, { type: "error" });
+      } else {
+        showToast(`${productName} added to favourites ❤️`);
+      }
+      try{
+        if(isCurrentlyFav){
+            await removeFavoriteAPI(id);
+    } else {
+      await addFavoriteAPI(id);
+    }
+ } catch (error) {
+    console.error('Favourite API error:', error);
+    // Rollback — API fail hui to UI wapas revert karo
+    setFavorites((prev) => ({ ...prev, [id]: isCurrentlyFav }));
+    showToast(error.message || 'Favourite update nahi hua', { type: 'error' });
+  }
+};
+
+
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
@@ -656,7 +676,7 @@ const handleCalculateDistance = async () => {
   );
 
   const inputCls =
-    "w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F8CB46] focus:ring-1 focus:ring-[#F8CB46] transition";
+    "w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F7D61D] focus:ring-1 focus:ring-[#F7D61D] transition";
 
 
   return (
@@ -796,7 +816,7 @@ const handleCalculateDistance = async () => {
         <div className="relative w-full max-w-[auto] h-[100dvh] sm:h-[932px] max-h-screen bg-white shadow-2xl overflow-hidden flex flex-col justify-between">
 
           {/* ---------- Top Header ---------- */}
-          <header className="bg-[#F8CB46] text-black pt-4 pb-5 px-4 rounded-b-[28px] shadow-sm shrink-0 z-10">
+          <header className="bg-[#F7D61D] text-black pt-4 pb-5 px-4 rounded-b-[28px] shadow-sm shrink-0 z-10">
 
             {/* Row 1: ETA + Profile */}
             <div className="flex items-center justify-between gap-3">
@@ -894,7 +914,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                   }}
                   className={`flex-shrink-0 px-4 py-1.5 rounded-lg text-[13px] font-bold transition-all duration-200 active:scale-95 ${
                     activeCategory === cat
-                      ? "bg-[#F8CB46] text-black shadow-sm"
+                      ? "bg-[#F7D61D] text-black shadow-sm"
                       : "bg-white text-gray-500 hover:bg-gray-50"
                   }`}
                 >
@@ -911,8 +931,8 @@ material-symbols-outlined text-black text-[26px] leading-none
                   <div className="flex items-center justify-between mb-1.5 px-1">
                     <h2 className="flex items-center gap-2 text-[14px] font-extrabold text-gray-900 tracking-tight">
                       <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-[#F8CB46] opacity-75 animate-ping"></span>
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#F8CB46]"></span>
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-[#F7D61D] opacity-75 animate-ping"></span>
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#F7D61D]"></span>
                       </span>
                       Popular in {activeCategory}
                     </h2>
@@ -954,7 +974,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                       product={product}
                       index={index}
                       isFav={!!favorites[product.id]}
-                      onToggleFav={() => toggleFavorite(product.id)}
+                      onToggleFav={() => toggleFavorite(product.id, product.name)}
                       onAdd={() => handleAddToCart(product)}
                       renderStars={renderStars}
                     />
@@ -976,7 +996,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                 >
                   <span
                     className={`material-symbols-outlined text-[18px] ${
-                      toast.type === "error" ? "text-[#ff8a80]" : "text-[#F8CB46]"
+                      toast.type === "error" ? "text-[#ff8a80]" : "text-[#F7D61D]"
                     }`}
                   >
                     {toast.type === "error" ? "error" : "check_circle"}
@@ -985,7 +1005,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                   {toast.action && (
                     <button
                       onClick={toast.action.onClick}
-                      className="ml-1 rounded-full bg-white/10 px-2.5 py-1 font-bold text-[#F8CB46] transition hover:bg-white/20 active:scale-95"
+                      className="ml-1 rounded-full bg-white/10 px-2.5 py-1 font-bold text-[#F7D61D] transition hover:bg-white/20 active:scale-95"
                     >
                       {toast.action.label}
                     </button>
@@ -1045,7 +1065,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                       type="button"
                       onClick={useCurrentLocation}
                       disabled={locating}
-                      className="w-full flex items-center gap-3 border border-[#F8CB46] bg-[#F8CB46]/10 rounded-xl px-3.5 py-3 active:scale-[0.99] transition disabled:opacity-60"
+                      className="w-full flex items-center gap-3 border border-[#F7D61D] bg-[#F7D61D]/10 rounded-xl px-3.5 py-3 active:scale-[0.99] transition disabled:opacity-60"
                     >
                       <span className={`material-symbols-outlined text-[22px] text-black ${locating ? "animate-spin" : ""}`}>
                         {locating ? "progress_activity" : "my_location"}
@@ -1111,7 +1131,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                               </p>
                             </div>
                             {active && (
-                              <span className="material-symbols-outlined text-[20px] text-[#2E9E4F]">
+                              <span className="material-symbols-outlined text-[20px] text-[#259535]">
                                 check_circle
                               </span>
                             )}
@@ -1145,7 +1165,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                           onClick={() => setNewLabel(l)}
                           className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${
                             newLabel === l
-                              ? "bg-[#F8CB46] border-[#F8CB46] text-black"
+                              ? "bg-[#F7D61D] border-[#F7D61D] text-black"
                               : "bg-white border-gray-200 text-gray-500"
                           }`}
                         >
@@ -1240,7 +1260,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                       onClick={saveNewAddress}
                       disabled={saving}
                       aria-busy={saving}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F8CB46] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-70"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F7D61D] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-70"
                     >
                       {saving ? (
                         <>

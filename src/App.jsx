@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import AdminPanel from '../admin/AdminPanel'
 import StartScreen from './pages/StartScreen.jsx'
@@ -26,6 +27,13 @@ import LocationChip from './components/LocationChip';
 
 function AppLayout() {
   const location = useLocation()
+
+  useLayoutEffect(() => {
+    const hideScrollbars = !location.pathname.startsWith('/admin')
+    document.documentElement.classList.toggle('app-scrollbars-hidden', hideScrollbars)
+
+    return () => document.documentElement.classList.remove('app-scrollbars-hidden')
+  }, [location.pathname])
 
   const showBottomNav = [
     '/home',

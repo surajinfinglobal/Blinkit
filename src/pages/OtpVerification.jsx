@@ -198,12 +198,12 @@ const OTPVerification = () => {
         }
         .iphone-container {
           width: 100%;
-          max-width: 390px;
+          max-width: 450px;
           height: 844px;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
-        .text-themeGreen { color: #F8CB46; }
-        .bg-themeGreen { background-color: #F8CB46; }
+        .text-themeGreen { color: #F7D61D; }
+        .bg-themeGreen { background-color: #F7D61D; }
         .bg-keyBg { background-color: #F3F4F6; }
         .text-linkBlue { color: #5B7FB5; }
 
@@ -309,10 +309,10 @@ const OTPVerification = () => {
                         error
                           ? "!border-red-400 !bg-red-50"
                           : focused
-                          ? "scale-105 border-[#F8CB46] ring-4 ring-[#F8CB46]/30"
+                          ? "scale-105 border-[#F7D61D] ring-4 ring-[#F7D61D]/30"
                           : digit
-                          ? "border-[#F8CB46] bg-[#FFFBEA]"
-                          : "border-[#F8CB46]/50"
+                          ? "border-[#F7D61D] bg-[#FFFBEA]"
+                          : "border-[#F7D61D]/50"
                       }`}
                     />
 

@@ -4,7 +4,7 @@ export default function PhoneNumberField({ inputRef, phone, onPhoneChange, onFoc
       <label className="sr-only" htmlFor="mobile-number">
         Enter Your Mobile Number
       </label>
-      <div className="group field-glow flex w-full items-center gap-3 rounded-2xl border-1 border-neutral-200 bg-white px-4 py-3.5 shadow-sm transition-all duration-200 hover:border-neutral-300 focus-within:scale-[1.02] focus-within:border-[#F8CB46] focus-within:ring-4 focus-within:ring-[#F8CB46]/25">
+      <div className="group field-glow flex w-full items-center gap-3 rounded-2xl border-1 border-neutral-200 bg-white px-4 py-3.5 shadow-sm transition-all duration-200 hover:border-neutral-300 focus-within:scale-[1.02] focus-within:border-[#F7D61D] focus-within:ring-4 focus-within:ring-[#F7D61D]/25">
         <svg
           className="phone-ring h-5 w-5 shrink-0 fill-none stroke-neutral-400 transition-colors duration-200 group-focus-within:stroke-[#B8860B]"
           strokeWidth="1.8"

@@ -99,7 +99,7 @@ function BottomNav({ cartCount = 0 }) {
               opacity: activeIndex === -1 ? 0 : 1,
             }}
           >
-            <span className="h-[3px] w-9 rounded-b-full bg-[#F8CB46]" />
+            <span className="h-[3px] w-9 rounded-b-full bg-[#F7D61D]" />
           </span>
 
           {NAV_ITEMS.map((item) => {
@@ -123,8 +123,8 @@ function BottomNav({ cartCount = 0 }) {
                     viewBox="0 0 24 24"
                     width="22"
                     height="22"
-                    fill={isActive && item.fillWhenActive ? 'currentColor' : 'none'}
-                    stroke="currentColor"
+                    fill={isActive && item.fillWhenActive ? (item.id === 'wishlist' ? '#ef4444' : 'currentColor') : 'none'}
+                    stroke={isActive && item.id === 'wishlist' ? '#ef4444' : 'currentColor'}
                     strokeWidth={isActive ? 2.2 : 1.8}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -143,8 +143,16 @@ function BottomNav({ cartCount = 0 }) {
                     </span>
                   )}
                 </span>
-
                 <span className={`text-[11px] leading-none transition-all duration-200 ${isActive ? 'font-bold' : 'font-medium'}`}>
+                {/* <span
+                  className={`text-[11px] leading-none transition-all duration-200 ${
+                    isActive
+                      ? item.id === 'wishlist'
+                        ? 'font-bold text-red-500'
+                        : 'font-bold text-[#0C831F]'
+                      : 'font-medium'
+                  }`}
+                > */}
                   {item.label}
                 </span>
               </button>

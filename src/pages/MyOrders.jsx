@@ -2,7 +2,9 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav.jsx';
+import OrderProgress from '../components/OrderProgress.jsx';
 import {getMyOrdersAPI} from "../services/orderplaceService.js"
+import NoOrder from '../assets/Blinkit _No_ Orders.png'
 import { addToCart, updateCartQuantity } from '../services/cartService';
 
 /* ================= CONFIG ================= */
@@ -28,14 +30,7 @@ const SORTS = [
   { id: 'low', label: 'Amount: Low to High' },
 ];
 
-const STEPS = [
-  { label: 'Received', icon: 'inventory_2' },
-  { label: 'Packed', icon: 'storefront' },
-  { label: 'On the way', icon: 'two_wheeler' },
-  { label: 'Doorstep', icon: 'home' },
-];
 const STAGE_BADGES = ['Order Received', 'Packed', 'Out for Delivery', 'At your door'];
-const BOUNDS = [0, 0.15, 0.4, 0.85, 1]; // progress ke breakpoints
 
 const HELP_ISSUES = [
   { id: 'missing', label: 'Item missing', icon: 'production_quantity_limits' },
@@ -208,7 +203,7 @@ const RepeatButton = ({ onRepeat }) => {
       onClick={handle}
       disabled={state === 'loading'}
       className={`flex h-10 items-center gap-1.5 rounded-full px-4 text-[13px] font-bold shadow-sm transition-all active:scale-95 disabled:opacity-80 ${
-        state === 'done' ? 'added-pop bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#f8cb46] text-[#1a1c1b]'
+        state === 'done' ? 'added-pop bg-[#EAF5EC] text-[#0C831F]' : 'bg-[#F7D61D] text-[#1a1c1b]'
       }`}
     >
       {state === 'loading' ? (
@@ -220,49 +215,6 @@ const RepeatButton = ({ onRepeat }) => {
     </button>
   );
 };
-
-/* Progress tracker (live) */
-const Tracker = ({ stage, fill }) => (
-  <div className="rounded-xl bg-[#f4f4f2] p-3">
-    <div className="relative grid grid-cols-4">
-      <div className="absolute left-[12.5%] right-[12.5%] top-[13px] h-1 overflow-hidden rounded-full bg-[#e8e8e6]">
-        <div
-          className="bar-shine relative h-full rounded-full bg-[#f8cb46] transition-all duration-1000 ease-linear"
-          style={{ width: `${fill}%` }}
-        />
-      </div>
-      {STEPS.map((s, i) => {
-        const done = i < stage;
-        const current = i === stage;
-        return (
-          <div key={s.label} className="z-10 flex flex-col items-center gap-1">
-            <div className="relative">
-              {current && <span className="absolute inset-0 animate-ping rounded-full bg-[#f8cb46] opacity-60" />}
-              <div
-                className={`relative flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-500 ${
-                  done || current ? 'bg-[#f8cb46] shadow-sm' : 'bg-[#e8e8e6]'
-                }`}
-              >
-                <span
-                  key={done ? 'done' : 'todo'}
-                  className={`material-symbols-outlined text-[16px] ${done ? 'check-pop' : ''} ${
-                    done || current ? 'text-[#1a1c1b]' : 'text-[#5f5e61]'
-                  }`}
-                  style={done ? { fontVariationSettings: "'FILL' 1" } : undefined}
-                >
-                  {done ? 'check' : s.icon}
-                </span>
-              </div>
-            </div>
-            <span className={`text-[10px] ${done || current ? 'font-bold text-[#1a1c1b]' : 'text-[#5f5e61]'}`}>
-              {s.label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  </div>
-);
 
 /* ================= ORDER CARDS ================= */
 
@@ -276,7 +228,7 @@ const OngoingCard = ({ order, now, index, onTrack, onRider, onCancel }) => {
       className="fade-up relative flex flex-col gap-4 overflow-hidden rounded-[20px] bg-white p-4 shadow-sm"
       style={{ animationDelay: `${index * 70}ms` }}
     >
-      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#f8cb46]/20 blur-2xl pointer-events-none" />
+      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#F7D61D]/20 blur-2xl pointer-events-none" />
 
       <div className="relative flex items-start justify-between gap-2">
         <div className="flex flex-col">
@@ -302,7 +254,7 @@ const OngoingCard = ({ order, now, index, onTrack, onRider, onCancel }) => {
         </div>
       </div>
 
-      <Tracker stage={stage} fill={fill} />
+      <OrderProgress status={order.rawStatus} />
 
       <div className="flex flex-col gap-2 rounded-xl bg-[#f4f4f2] p-2">
         {order.items.map((it) => (
@@ -339,10 +291,10 @@ const OngoingCard = ({ order, now, index, onTrack, onRider, onCancel }) => {
         <button
           type="button"
           onClick={onTrack}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-[#f8cb46] text-[15px] font-bold shadow-sm transition-all active:scale-95"
+          className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-[#F7D61D] text-[15px] font-bold shadow-sm transition-all active:scale-95"
         >
           <span className="material-symbols-outlined text-[18px]">navigation</span>
-          <span>Track Live</span>
+          <span>Track </span>
         </button>
       </div>
 
@@ -477,7 +429,7 @@ const PastCard = ({ order, index, open, onToggle, onInvoice, onRate, onHelp, onR
 const RiderSheet = ({ order, onClose }) => (
   <Sheet title="Contact Rider" onClose={onClose}>
     <div className="mb-4 flex items-center gap-3 rounded-2xl bg-[#f4f4f2] p-3">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f8cb46]">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F7D61D]">
         <span className="material-symbols-outlined text-[26px]">two_wheeler</span>
       </div>
       <div>
@@ -491,7 +443,7 @@ const RiderSheet = ({ order, onClose }) => (
       </div>
     </div>
     <div className="grid grid-cols-3 gap-2">
-      <a href={`tel:${order.rider.phone}`} className="flex flex-col items-center gap-1 rounded-2xl bg-[#f8cb46] py-3 text-[12px] font-bold active:scale-95 transition">
+      <a href={`tel:${order.rider.phone}`} className="flex flex-col items-center gap-1 rounded-2xl bg-[#F7D61D] py-3 text-[12px] font-bold active:scale-95 transition">
         <span className="material-symbols-outlined">call</span>Call
       </a>
       <a href={`sms:${order.rider.phone}`} className="flex flex-col items-center gap-1 rounded-2xl bg-[#e8e8e6] py-3 text-[12px] font-bold active:scale-95 transition">
@@ -549,7 +501,7 @@ const p = ongoing ? getProgress(order).fill / 100 : 1;
           <path
             d="M30 140 C 90 140, 80 40, 150 70 S 250 130, 290 30"
             fill="none"
-            stroke="#f8cb46"
+            stroke="#F7D61D"
             strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={geo.len || 1}
@@ -563,14 +515,14 @@ const p = ongoing ? getProgress(order).fill / 100 : 1;
           </g>
           {/* Home */}
           <g transform="translate(290 30)">
-            <circle r="16" fill="#f8cb46" className="home-pulse" />
+            <circle r="16" fill="#F7D61D" className="home-pulse" />
             <circle r="10" fill="#1a1c1b" />
-            <path d="M-5 1 L0 -4 L5 1 V5 H-5Z" fill="#f8cb46" />
+            <path d="M-5 1 L0 -4 L5 1 V5 H-5Z" fill="#F7D61D" />
           </g>
           {/* Rider */}
           <g style={{ transform: `translate(${geo.x}px, ${geo.y}px)`, transition: 'transform 1s linear' }}>
-            <circle r="14" fill="#f8cb46" opacity="0.35" className="rider-pulse" />
-            <circle r="9" fill="#f8cb46" stroke="#fff" strokeWidth="2.5" />
+            <circle r="14" fill="#F7D61D" opacity="0.35" className="rider-pulse" />
+            <circle r="9" fill="#F7D61D" stroke="#fff" strokeWidth="2.5" />
             <circle r="3" fill="#1a1c1b" />
           </g>
         </svg>
@@ -585,7 +537,7 @@ const p = ongoing ? getProgress(order).fill / 100 : 1;
           <p className="text-[12px] text-[#5f5e61]">{ongoing ? STAGE_BADGES[stage] : 'Hope you enjoyed it!'}</p>
         </div>
         {ongoing && (
-          <span className="rounded-xl bg-[#1a1c1b] px-3 py-1.5 font-mono text-[15px] font-bold tabular-nums text-[#f8cb46]">
+          <span className="rounded-xl bg-[#1a1c1b] px-3 py-1.5 font-mono text-[15px] font-bold tabular-nums text-[#F7D61D]">
             {fmtCountdown(remaining)}
           </span>
         )}
@@ -593,13 +545,13 @@ const p = ongoing ? getProgress(order).fill / 100 : 1;
 
       {ongoing && (
         <div className="mt-3">
-          <Tracker stage={stage} fill={getProgress(order, now).fill} />
+          <OrderProgress status={order.rawStatus} />
         </div>
       )}
 
       {/* Rider + PIN */}
       <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#f4f4f2] p-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f8cb46]">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F7D61D]">
           <span className="material-symbols-outlined">two_wheeler</span>
         </div>
         <div className="min-w-0 flex-1">
@@ -609,7 +561,7 @@ const p = ongoing ? getProgress(order).fill / 100 : 1;
         <button
           type="button"
           onClick={onRider}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f8cb46] active:scale-90 transition"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F7D61D] active:scale-90 transition"
           aria-label="Contact rider"
         >
           <span className="material-symbols-outlined text-[20px]">call</span>
@@ -617,7 +569,7 @@ const p = ongoing ? getProgress(order).fill / 100 : 1;
       </div>
 
       {ongoing && (
-        <div className="mt-3 flex items-center justify-between rounded-2xl border border-dashed border-[#f8cb46] bg-[#f8cb46]/10 px-4 py-3">
+        <div className="mt-3 flex items-center justify-between rounded-2xl border border-dashed border-[#F7D61D] bg-[#F7D61D]/10 px-4 py-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#755b00]">Delivery PIN</p>
             <p className="text-[11px] text-[#5f5e61]">Rider ko delivery par batao</p>
@@ -640,7 +592,7 @@ const InvoiceSheet = ({ order, onClose, onToast }) => (
       <span>#{order.id}</span>
       <span>{fmtDate(order.placedAt)}</span>
     </div>
-    <div className="divide-y divide-[#f0f0ee] rounded-2xl bg-[#f9f9f7] px-3">
+    <div className="divide-y divide-[#f0f0ee] rounded-2xl bg-[#F5F7FA] px-3">
       {order.items.map((it) => (
         <div key={it.id} className="flex items-center justify-between py-2.5 text-[13px]">
           <span className="min-w-0 flex-1 truncate pr-2">
@@ -655,7 +607,7 @@ const InvoiceSheet = ({ order, onClose, onToast }) => (
       <div className="flex justify-between"><span className="text-[#5f5e61]">Delivery fee</span><span>{order.deliveryFee ? `₹${order.deliveryFee}` : 'FREE'}</span></div>
       <div className="flex justify-between"><span className="text-[#5f5e61]">Handling fee</span><span>₹{order.handlingFee}</span></div>
       {order.discount > 0 && (
-        <div className="flex justify-between text-[#2E7D32]"><span>Discount</span><span>- ₹{order.discount}</span></div>
+        <div className="flex justify-between text-[#0C831F]"><span>Discount</span><span>- ₹{order.discount}</span></div>
       )}
       <div className="mt-1 flex justify-between border-t border-[#e8e8e6] pt-2 text-[16px] font-bold">
         <span>Total</span><span>₹{inr(totalOf(order))}</span>
@@ -668,7 +620,7 @@ const InvoiceSheet = ({ order, onClose, onToast }) => (
         downloadInvoice(order);
         onToast('Invoice downloaded');
       }}
-      className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#f8cb46] text-[14px] font-bold shadow-sm transition active:scale-[0.98]"
+      className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F7D61D] text-[14px] font-bold shadow-sm transition active:scale-[0.98]"
     >
       <span className="material-symbols-outlined text-[20px]">download</span>
       Download {order.status === 'cancelled' ? 'receipt' : 'invoice'}
@@ -695,8 +647,8 @@ const RateSheet = ({ order, onSave, onClose }) => {
       {done ? (
         <div className="flex flex-col items-center py-6 text-center">
           <svg className="h-20 w-20" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="36" fill="#E8F5E9" />
-            <path className="check-draw" d="M25 41 L36 52 L56 30" fill="none" stroke="#2E9E4F" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="40" cy="40" r="36" fill="#EAF5EC" />
+            <path className="check-draw" d="M25 41 L36 52 L56 30" fill="none" stroke="#259535" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <p className="mt-3 text-[16px] font-bold">Thanks for rating!</p>
         </div>
@@ -709,7 +661,7 @@ const RateSheet = ({ order, onSave, onClose }) => {
                 <svg
                   key={n <= shown ? `on-${n}-${stars}` : `off-${n}`}
                   viewBox="0 0 24 24"
-                  className={`h-10 w-10 transition-colors duration-200 ${n <= shown ? 'star-pop fill-[#f8cb46]' : 'fill-[#e8e8e6]'}`}
+                  className={`h-10 w-10 transition-colors duration-200 ${n <= shown ? 'star-pop fill-[#F7D61D]' : 'fill-[#e8e8e6]'}`}
                 >
                   <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                 </svg>
@@ -722,13 +674,13 @@ const RateSheet = ({ order, onSave, onClose }) => {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Kuch aur batana chahte ho? (optional)"
-            className="mt-3 w-full resize-none rounded-xl border border-[#e8e8e6] px-3.5 py-2.5 text-[13px] outline-none transition focus:border-[#f8cb46] focus:ring-1 focus:ring-[#f8cb46]"
+            className="mt-3 w-full resize-none rounded-xl border border-[#e8e8e6] px-3.5 py-2.5 text-[13px] outline-none transition focus:border-[#F7D61D] focus:ring-1 focus:ring-[#F7D61D]"
           />
           <button
             type="button"
             onClick={submit}
             disabled={!stars}
-            className="mt-4 h-12 w-full rounded-full bg-[#f8cb46] text-[14px] font-bold shadow-sm transition active:scale-[0.98] disabled:opacity-40"
+            className="mt-4 h-12 w-full rounded-full bg-[#F7D61D] text-[14px] font-bold shadow-sm transition active:scale-[0.98] disabled:opacity-40"
           >
             {order.rating ? 'Update rating' : 'Submit'}
           </button>
@@ -754,12 +706,12 @@ const HelpSheet = ({ order, onSubmit, onClose }) => {
                   type="button"
                   onClick={() => setIssue(h.id)}
                   className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition active:scale-[0.99] ${
-                    active ? 'border-[#f8cb46] bg-[#f8cb46]/15' : 'border-[#eeeeec] bg-white'
+                    active ? 'border-[#F7D61D] bg-[#F7D61D]/15' : 'border-[#eeeeec] bg-white'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[20px] text-[#755b00]">{h.icon}</span>
                   <span className="flex-1 text-[13px] font-semibold">{h.label}</span>
-                  {active && <span className="material-symbols-outlined check-pop text-[18px] text-[#2E9E4F]">check_circle</span>}
+                  {active && <span className="material-symbols-outlined check-pop text-[18px] text-[#259535]">check_circle</span>}
                 </button>
               );
             })}
@@ -768,7 +720,7 @@ const HelpSheet = ({ order, onSubmit, onClose }) => {
             type="button"
             disabled={!issue}
             onClick={() => onSubmit(issue)}
-            className="mt-4 h-12 w-full rounded-full bg-[#f8cb46] text-[14px] font-bold shadow-sm transition active:scale-[0.98] disabled:opacity-40"
+            className="mt-4 h-12 w-full rounded-full bg-[#F7D61D] text-[14px] font-bold shadow-sm transition active:scale-[0.98] disabled:opacity-40"
           >
             Raise request
           </button>
@@ -813,7 +765,6 @@ export default function MyOrders() {
   // Fonts & Icons load karna
   useEffect(() => {
     const links = [
-      'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap',
       'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap',
     ];
     const added = links.map((href) => {
@@ -903,11 +854,14 @@ export default function MyOrders() {
             })),
             discount: bill.discount || 0,
             payment: order.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online',
+            paymentStatus: order.paymentStatus,
             address: [order.deliveryAddress?.label, order.deliveryAddress?.line]
               .filter(Boolean)
               .join(' · '),
             handlingFee: bill.handlingFee || 0,
             deliveryFee: bill.deliveryFee || 0,
+            subtotal: bill.itemTotal || 0,
+            total: bill.grandTotal || 0,
             deliveredInMins:
               status === 'delivered'
                 ? Math.max(1, Math.round((Date.now() - placedAt) / MIN))
@@ -945,6 +899,12 @@ export default function MyOrders() {
   useEffect(() => {
     if (!hasOngoing) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasOngoing]);
+
+  useEffect(() => {
+    if (!hasOngoing) return;
+    const id = setInterval(() => setReloadOrders((attempt) => attempt + 1), 15000);
     return () => clearInterval(id);
   }, [hasOngoing]);
 
@@ -1072,11 +1032,11 @@ export default function MyOrders() {
       `}</style>
 
       {/* Home/Cart jaisa shell: fixed height, sirf <main> scroll hota hai */}
-      <div className="flex min-h-screen items-start justify-center bg-gray-100 text-[#1a1c1b] antialiased" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-        <div className="relative flex h-[100dvh] max-h-screen w-full max-w-[auto] flex-col overflow-hidden bg-[#f9f9f7] shadow-2xl sm:h-[932px]">
+      <div className="flex min-h-screen items-start justify-center bg-gray-100 text-[#1a1c1b] antialiased">
+        <div className="relative flex h-[100dvh] max-h-screen w-full max-w-[auto] flex-col overflow-hidden bg-[#F5F7FA] shadow-2xl sm:h-[932px]">
 
           {/* ================= HEADER ================= */}
-          <header className="header-in relative z-30 shrink-0 bg-[#f9f9f7]/90 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+          <header className="header-in relative z-30 shrink-0 bg-[#F5F7FA]/90 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl">
             <div className="flex h-16 items-center justify-between gap-2 px-4">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <button
@@ -1096,22 +1056,14 @@ export default function MyOrders() {
                   className="flex h-10 w-10 items-center justify-center rounded-full transition-all hover:bg-[#eeeeec] active:scale-90"
                   type="button"
                 >
-                  <span className="material-symbols-outlined text-[24px]">search</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/account')}
-                  aria-label="Profile"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#755b00] transition active:scale-90"
-                >
-                  <span className="material-symbols-outlined text-[18px] text-white">person</span>
-                </button>
+
               </div>
             </div>
           </header>
 
           {/* ================= MAIN CONTENT ================= */}
-          <main ref={mainRef} className="relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar bg-[#f9f9f7] pb-4 pt-2">
+          <main ref={mainRef} className="relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar bg-[#F5F7FA] pb-4 pt-2">
             <div className="flex w-full flex-col gap-4 px-4 pb-6">
 
               {/* Search & Filters */}
@@ -1124,7 +1076,7 @@ export default function MyOrders() {
                     ref={searchRef}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-11 w-full rounded-full border border-transparent bg-white pl-10 pr-10 text-[14px] shadow-sm transition-all placeholder:text-[#7f7662] focus:border-[#f8cb46] focus:outline-none"
+                    className="h-11 w-full rounded-full border border-transparent bg-white pl-10 pr-10 text-[14px] shadow-sm transition-all placeholder:text-[#7f7662] focus:border-[#F7D61D] focus:outline-none"
                     placeholder="Search orders or items..."
                     type="text"
                     aria-label="Search orders"
@@ -1149,8 +1101,8 @@ export default function MyOrders() {
                         key={f.id}
                         onClick={() => setActiveFilter(f.id)}
                         onClickCapture={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })}
-                        className={`flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-[13px] font-semibold leading-[18px] tracking-[0.01em] shadow-sm transition-all duration-200 active:scale-95 ${
-                          isActive ? 'scale-105 bg-[#f8cb46] text-[#1a1c1b]' : 'bg-white text-[#5f5e61]'
+                        className={`flex h-9 items-center justify-center whitespace-nowrap rounded-full px-3 text-[13px] font-semibold leading-[18px] tracking-[0.01em] shadow-sm transition-all duration-200 active:scale-95 ${
+                          isActive ? 'scale-105 bg-[#F7D61D] text-[#1a1c1b]' : 'bg-white text-[#5f5e61]'
                         }`}
                       >
                         {f.label} ({counts[f.id]})
@@ -1163,7 +1115,7 @@ export default function MyOrders() {
               {/* ================= EMPTY STATE ================= */}
               {loading ? (
                 <div className="flex items-center justify-center gap-3 py-16 text-[14px] font-semibold text-[#5f5e61]">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#f8cb46] border-t-transparent" />
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#F7D61D] border-t-transparent" />
                   Loading your orders...
                 </div>
               ) : ordersError ? (
@@ -1176,40 +1128,18 @@ export default function MyOrders() {
                       setLoading(true);
                       setReloadOrders((attempt) => attempt + 1);
                     }}
-                    className="rounded-full bg-[#f8cb46] px-6 py-3 text-[15px] font-bold shadow-sm transition-all active:scale-95"
+                    className="rounded-full bg-[#F7D61D] px-6 py-3 text-[15px] font-bold shadow-sm transition-all active:scale-95"
                   >
                     Try Again
                   </button>
                 </div>
               ) : isOrdersEmpty ? (
-                <div className="fade-up mt-4 flex flex-col items-center justify-center px-4 py-16 text-center">
-                  <div className="floaty mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-[#f8cb46]/20">
-                    <span className="material-symbols-outlined text-[48px] text-[#755b00]">receipt_long</span>
-                  </div>
-                  <h2 className="mb-1 text-[20px] font-bold">No Orders Found</h2>
-                  <p className="mb-6 max-w-[260px] text-[14px] text-[#5f5e61]">
-                    {searchQuery || activeFilter !== 'all'
-                      ? "We couldn't find any orders matching your search or filter."
-                      : "You haven't placed any orders yet. Start shopping to see them here!"}
-                  </p>
-                  {searchQuery || activeFilter !== 'all' ? (
-                    <button
-                      onClick={() => {
-                        setSearchQuery('');
-                        setActiveFilter('all');
-                      }}
-                      className="rounded-full bg-white px-6 py-3 text-[15px] font-bold shadow-sm transition-all active:scale-95"
-                    >
-                      Reset filters
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => navigate('/')}
-                      className="rounded-full bg-[#f8cb46] px-6 py-3 text-[15px] font-bold shadow-sm transition-all active:scale-95"
-                    >
-                      Start Shopping
-                    </button>
-                  )}
+                <div className="fade-up -mt-2 flex flex-col items-center justify-start rounded-2xl bg-[#F5F7FA] px-2 pb-24 pt-0 text-center" onClick={() => navigate('/home')}>
+                  <img
+                    src={NoOrder}
+                    alt="No orders yet. Start shopping to place your first order."
+                    className="h-auto w-full max-w-[420px] mix-blend-multiply"
+                  />
                 </div>
               ) : (
                 <div key={listKey} className="flex flex-col gap-4">
@@ -1222,7 +1152,7 @@ export default function MyOrders() {
                           order={o}
                           now={now}
                           index={i}
-                          onTrack={() => setSheet({ type: 'track', id: o.id })}
+                          onTrack={() => navigate('/Confirmorder', { state: { trackedOrder: o } })}
                           onRider={() => setSheet({ type: 'rider', id: o.id })}
                           onCancel={() => setSheet({ type: 'cancel', id: o.id })}
                         />
@@ -1374,14 +1304,14 @@ export default function MyOrders() {
               key={toast.key}
               className="toast-in pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-[#27313f] py-2 pl-3 pr-3 text-[12px] font-semibold text-[#eaf1ff] shadow-lg"
             >
-              <span className={`material-symbols-outlined text-[18px] ${toast.type === 'error' ? 'text-[#ff8a80]' : 'text-[#f8cb46]'}`}>
+              <span className={`material-symbols-outlined text-[18px] ${toast.type === 'error' ? 'text-[#ff8a80]' : 'text-[#F7D61D]'}`}>
                 {toast.type === 'error' ? 'error' : 'check_circle'}
               </span>
               <span className="truncate">{toast.message}</span>
               {toast.action && (
                 <button
                   onClick={toast.action.onClick}
-                  className="ml-1 rounded-full bg-white/10 px-2.5 py-1 font-bold text-[#f8cb46] transition hover:bg-white/20 active:scale-95"
+                  className="ml-1 rounded-full bg-white/10 px-2.5 py-1 font-bold text-[#F7D61D] transition hover:bg-white/20 active:scale-95"
                 >
                   {toast.action.label}
                 </button>

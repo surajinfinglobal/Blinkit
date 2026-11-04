@@ -7,7 +7,6 @@ const NODE = 'Node BLR-DC-092 • TLS 1.3 Strict';
 export default function AdminLogin({ onSuccess }) {
   useEffect(() => {
     const links = [
-      'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap',
       'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap',
     ];
     const added = links.map((href) => {
@@ -76,7 +75,6 @@ export default function AdminLogin({ onSuccess }) {
   return (
     <div
       className="relative isolate flex min-h-screen flex-col justify-between overflow-x-hidden bg-[#f9f9f7] text-[#1a1c1b] antialiased selection:bg-[#f8cb46] selection:text-[#6e5600]"
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       <style>{`
         @keyframes alHeaderIn { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
