@@ -154,7 +154,10 @@ export default function useAdminData(notify) {
     if (order.riderId === riderId) return true;
 
     const riderIsAlreadyAssigned = orders.some(
-      (entry) => entry.id !== orderId && entry.riderId === riderId
+      (entry) =>
+        entry.id !== orderId &&
+        !["delivered", "cancelled"].includes(entry.status) &&
+        entry.riderId === riderId
     );
     if (rider.status !== "available" || riderIsAlreadyAssigned) {
       notify(`${rider.name} abhi available nahi hai`, "error");

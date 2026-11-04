@@ -47,7 +47,7 @@ const EMPTY_ADDRESS_FORM = {
 };
 
 const inputCls =
-  "w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F8CB46] focus:ring-1 focus:ring-[#F8CB46] transition";
+  "w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F7D61D] focus:ring-1 focus:ring-[#F7D61D] transition";
 
 const AddressField = ({ label, required, error, children }) => (
   <label className="block">
@@ -515,7 +515,7 @@ export default function LocationChip({
                     type="button"
                     onClick={useCurrentLocation}
                     disabled={locating}
-                    className="w-full flex items-center gap-3 border border-[#F8CB46] bg-[#F8CB46]/10 rounded-xl px-3.5 py-3 active:scale-[0.99] transition disabled:opacity-60"
+                    className="w-full flex items-center gap-3 border border-[#F7D61D] bg-[#F7D61D]/10 rounded-xl px-3.5 py-3 active:scale-[0.99] transition disabled:opacity-60"
                   >
                     <span className={`material-symbols-outlined text-[22px] text-black ${locating ? "animate-spin" : ""}`}>
                       {locating ? "progress_activity" : "my_location"}
@@ -593,7 +593,7 @@ export default function LocationChip({
                               </p>
                             </div>
                             {active && (
-                              <span className="material-symbols-outlined text-[20px] text-[#2E9E4F]">
+                              <span className="material-symbols-outlined text-[20px] text-[#259535]">
                                 check_circle
                               </span>
                             )}
@@ -626,7 +626,7 @@ export default function LocationChip({
                         type="button"
                         onClick={() => setNewLabel(l)}
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${newLabel === l
-                            ? "bg-[#F8CB46] border-[#F8CB46] text-black"
+                            ? "bg-[#F7D61D] border-[#F7D61D] text-black"
                             : "bg-white border-gray-200 text-gray-500"
                           }`}
                       >
@@ -715,7 +715,7 @@ export default function LocationChip({
                     onClick={saveNewAddress}
                     disabled={saving}
                     aria-busy={saving}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F8CB46] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-70"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#F7D61D] py-3.5 text-[13px] font-bold tracking-wider text-black transition active:scale-[0.99] disabled:opacity-70"
                   >
                     {saving ? (
                       <>
@@ -741,7 +741,7 @@ export default function LocationChip({
               className="toast-in pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-[#27313f] py-2 pl-4 pr-3 text-[12px] font-semibold text-[#eaf1ff] shadow-lg"
             >
               <span
-                className={`material-symbols-outlined text-[18px] ${toast.type === "error" ? "text-[#ff8a80]" : "text-[#F8CB46]"
+                className={`material-symbols-outlined text-[18px] ${toast.type === "error" ? "text-[#ff8a80]" : "text-[#F7D61D]"
                   }`}
               >
                 {toast.type === "error" ? "error" : "check_circle"}

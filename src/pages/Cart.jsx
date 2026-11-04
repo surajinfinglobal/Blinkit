@@ -3,6 +3,10 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import LocationChip from '../components/LocationChip.jsx';
 import PulseSplash from '../components/PulseSplash.jsx';
+import EmptyCart from '../assets/Blinkit _Empty _Cart.png'
+import FreeDeliveryProgress, {
+  DEFAULT_FREE_DELIVERY_AT,
+} from '../components/FreeDeliveryProgress.jsx';
 import {
   getSelectedAddress,
   setSelectedAddress,
@@ -21,14 +25,13 @@ const CHECKOUT_ROUTE = "/CheckoutPayment";
 
 const HANDLING_FEE = 15;
 const DELIVERY_FEE = 30;
-const FREE_DELIVERY_MIN = 10000;             // is amount ya usse upar delivery free
 const MAX_QTY = 10;
 
 // Coupons – baad mein backend se la sakte ho
 const COUPONS = {
-  FRESHSAVER: { type: "freedelivery", min: 0,   label: "Free delivery on any order" },
-  SAVE10:     { type: "percent", value: 10, max: 60, min: 199, label: "10% off up to ₹60 on orders above ₹199" },
-  FLAT50:     { type: "flat", value: 50, min: 399, label: "Flat ₹50 off on orders above ₹399" },
+  FRESHSAVER: { type: "freedelivery", min: 0, label: "Free delivery on any order" },
+  SAVE10: { type: "percent", value: 10, max: 60, min: 199, label: "10% off up to ₹60 on orders above ₹199" },
+  FLAT50: { type: "flat", value: 50, min: 399, label: "Flat ₹50 off on orders above ₹399" },
 };
 
 // Home page jo keys use karta hai wahi yahan (location sync)
@@ -238,7 +241,6 @@ const CartScreen = () => {
   // Fonts & Icons (home unmount par apne links hata deta hai, isliye yahan bhi load)
   useEffect(() => {
     const links = [
-      "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap",
       "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
     ];
     const added = links.map((href) => {
@@ -304,7 +306,7 @@ const CartScreen = () => {
         if (!cancelled) setItems(cartItems);
       } catch (error) {
         console.error("Cart load error:", error);
-        if (!cancelled) 
+        if (!cancelled)
           setCartError("Something Went Wrong");
         //  setCartError(error.message || "Cart load nahi ho paya.");
       } finally {
@@ -327,7 +329,7 @@ const CartScreen = () => {
   const activeCoupon = useMemo(() => evaluateCoupon(appliedCode, subtotal), [appliedCode, subtotal]);
   const couponOk = !!activeCoupon?.ok;
 
-  const baseDelivery = subtotal >= FREE_DELIVERY_MIN ? 0 : DELIVERY_FEE;
+  const baseDelivery = subtotal >= DEFAULT_FREE_DELIVERY_AT ? 0 : DELIVERY_FEE;
   const deliveryFee = couponOk && activeCoupon.freeDelivery ? 0 : baseDelivery;
   const couponDiscount = couponOk ? activeCoupon.discount : 0;
   const deliveryWaived = DELIVERY_FEE - deliveryFee;
@@ -335,9 +337,6 @@ const CartScreen = () => {
   const total = subtotal > 0 ? Math.max(0, subtotal + HANDLING_FEE + deliveryFee - couponDiscount) : 0;
 
   const animatedTotal = useCountUp(total);
-  const freeDelivLeft = Math.max(0, FREE_DELIVERY_MIN - subtotal);
-  const freeDelivPct = Math.min(100, Math.round((subtotal / FREE_DELIVERY_MIN) * 100));
-
   const isEmpty = items.length === 0;
   const anyBusy = busyIds.length > 0 || removingIds.length > 0;
 
@@ -579,433 +578,405 @@ const CartScreen = () => {
 
       {/* Home.jsx jaisa hi shell: fixed height, sirf <main> scroll hota hai */}
       <div className="bg-gray-100 flex justify-center items-start min-h-screen text-[#121c2a] antialiased font-sans">
-        <div className="relative w-full max-w-[auto] h-[100dvh] sm:h-[932px] max-h-screen bg-[#f8f9ff] shadow-2xl overflow-hidden flex flex-col">
+        <div className="relative w-full max-w-[auto] h-[100dvh] sm:h-[932px] max-h-screen bg-[#F5F7FA] shadow-2xl overflow-hidden flex flex-col">
 
-        {/* ---------- Sticky Header ---------- */}
-        <header className="banner-in shrink-0 relative z-30 bg-[#F8CB46] text-black px-4 pt-4 pb-4 rounded-b-[28px] shadow-md">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                aria-label="Go back"
-                className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center active:scale-90 transition-transform shrink-0"
-              >
-                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-              </button>
-              <div className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-full">
-                <span className="material-symbols-outlined bolt-pulse text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  bolt
+          {/* ---------- Sticky Header ---------- */}
+          <header className="banner-in shrink-0 relative z-30 bg-[#F7D61D] text-black px-4 pt-4 pb-4 rounded-b-[28px] shadow-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  aria-label="Go back"
+                  className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                </button>
+                <div className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-full">
+                  <span className="material-symbols-outlined bolt-pulse text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    bolt
+                  </span>
+                  <span className="text-[10px] leading-[14px] tracking-wide uppercase font-semibold whitespace-nowrap">
+                    Delivery in {eta} mins
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] leading-[14px] text-black/80 whitespace-nowrap">
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
                 </span>
-                <span className="text-[10px] leading-[14px] tracking-wide uppercase font-semibold whitespace-nowrap">
-                  Delivery in {eta} mins
-                </span>
+                <button
+                  onClick={() => navigate("/wishlist")}
+                  aria-label="Wishlist"
+                  className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center text-black active:scale-90 transition-transform"
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">favorite</span>
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[10px] leading-[14px] text-black/80 whitespace-nowrap">
-                {itemCount} {itemCount === 1 ? "item" : "items"}
-              </span>
-              <button
-                onClick={() => navigate("/wishlist")}
-                aria-label="Wishlist"
-                className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center text-black active:scale-90 transition-transform"
-                type="button"
-              >
-                <span className="material-symbols-outlined text-[18px]">favorite</span>
-              </button>
-            </div>
-          </div>
+            {/* Location – home se synced */}
+            <LocationChip className="header-in mt-3 max-w-70" />
+          </header>
 
-          {/* Location – home se synced */}
-          <LocationChip className="header-in mt-3 max-w-70" />
-        </header>
+          <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar relative w-full pt-4 pb-4">
+            <div className="flex flex-col w-full">
 
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar relative w-full pt-4 pb-4">
-          <div className="flex flex-col w-full">
-
-            {/* ---------- Error ---------- */}
-            {cartError && (
-              <div className="px-4 mb-4 fade-up">
-                <div className="bg-[#ffdad6] text-[#93000a] rounded-xl p-3 flex items-center gap-3">
-                  <span className="material-symbols-outlined text-[22px]">error</span>
-                  <p className="flex-1 text-[12px] leading-4 font-medium">{cartError}</p>
-                  <button
-                    type="button"
-                    onClick={() => setReloadKey((k) => k + 1)}
-                    className="text-[12px] font-bold px-3 py-1.5 rounded-lg bg-white/70 active:scale-95 transition-transform"
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ---------- Free delivery progress ---------- */}
-            {!isEmpty && (
-              <div className="px-4 mb-4 fade-up">
-                <div className="bg-white rounded-xl px-3.5 py-3 shadow-sm">
-                  <div className="flex items-center gap-2 text-[12px] leading-4 font-semibold">
-                    <span
-                      key={freeDelivLeft === 0 ? "done" : "todo"}
-                      className={`material-symbols-outlined text-[18px] ${freeDelivLeft === 0 ? "text-[#2E9E4F] check-pop" : "text-[#B8860B]"}`}
+              {/* ---------- Error ---------- */}
+              {cartError && (
+                <div className="px-4 mb-4 fade-up">
+                  <div className="bg-[#ffdad6] text-[#93000a] rounded-xl p-3 flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[22px]">error</span>
+                    <p className="flex-1 text-[12px] leading-4 font-medium">{cartError}</p>
+                    <button
+                      type="button"
+                      onClick={() => setReloadKey((k) => k + 1)}
+                      className="text-[12px] font-bold px-3 py-1.5 rounded-lg bg-white/70 active:scale-95 transition-transform"
                     >
-                      {freeDelivLeft === 0 ? "check_circle" : "local_shipping"}
-                    </span>
-                    {freeDelivLeft === 0 ? (
-                      <span className="text-[#2E7D32]">Free delivery unlocked!</span>
-                    ) : (
-                      <span>Add ₹{inr(freeDelivLeft)} more for free delivery</span>
-                    )}
-                  </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-[#eff4ff] overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ease-out ${freeDelivLeft === 0 ? "bg-[#2E9E4F]" : "bg-[#F8CB46]"}`}
-                      style={{ width: `${freeDelivPct}%` }}
-                    />
+                      Retry
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ================= CART ITEMS ================= */}
-            <div className="px-4 flex flex-col gap-2.5 mb-6">
-              {items.map((it, i) => {
-                const isRemoving = removingIds.includes(it.id);
-                const isBusy = busyIds.includes(it.id);
-                return (
-                  <div
-                    key={it.id}
-                    className="item-in"
-                    style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}
-                  >
+              {/* ---------- Free delivery progress ---------- */}
+              {!isEmpty && (
+                <div className="px-4 mb-4 fade-up">
+                  <FreeDeliveryProgress
+                    total={subtotal}
+                    itemsCount={itemCount}
+                  />
+                </div>
+              )}
+
+              {/* ================= CART ITEMS ================= */}
+              <div className="px-4 flex flex-col gap-2.5 mb-6">
+                {items.map((it, i) => {
+                  const isRemoving = removingIds.includes(it.id);
+                  const isBusy = busyIds.includes(it.id);
+                  return (
                     <div
-                      className={`bg-white rounded-xl p-2.5 shadow-sm flex items-center gap-3 transition-all duration-300 ${
-                        isRemoving ? "opacity-0 -translate-x-8 scale-95" : "opacity-100 translate-x-0 scale-100"
-                      }`}
+                      key={it.id}
+                      className="item-in"
+                      style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}
                     >
-                      <ItemImage src={it.image} alt={it.name} />
+                      <div
+                        className={`bg-white rounded-xl p-2.5 shadow-sm flex items-center gap-3 transition-all duration-300 ${isRemoving ? "opacity-0 -translate-x-8 scale-95" : "opacity-100 translate-x-0 scale-100"
+                          }`}
+                      >
+                        <ItemImage src={it.image} alt={it.name} />
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-1">
-                          <h2 className="text-[13px] leading-4 font-semibold text-[#121c2a] truncate">
-                            {it.name}
-                          </h2>
-                          <button
-                            aria-label={`Remove ${it.name}`}
-                            onClick={() => removeItem(it.id)}
-                            disabled={isRemoving}
-                            className="text-[#bfc9c1] hover:text-[#ba1a1a] active:scale-90 transition p-0.5 -mt-0.5 -mr-0.5"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                        <p className="text-[11px] leading-3 text-[#404943] mt-0.5">{it.unit}</p>
-
-                        <div className="flex items-center justify-between mt-1.5">
-                          <span key={it.qty} className="price-pop text-[15px] leading-5 font-semibold text-[#121c2a]">
-                            ₹ {inr(it.basePrice * it.qty)}
-                          </span>
-
-                          {/* Pill Stepper */}
-                          <div className={`flex items-center bg-[#F8CB46] text-black rounded-full p-0.5 shadow-sm transition-opacity ${isBusy ? "opacity-60" : ""}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-1">
+                            <h2 className="text-[13px] leading-4 font-semibold text-[#121c2a] truncate">
+                              {it.name}
+                            </h2>
                             <button
-                              aria-label="Decrease quantity"
-                              onClick={() => changeQty(it.id, -1)}
-                              disabled={isBusy || isRemoving}
-                              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e0b530] active:scale-90 transition-transform"
+                              aria-label={`Remove ${it.name}`}
+                              onClick={() => removeItem(it.id)}
+                              disabled={isRemoving}
+                              className="text-[#bfc9c1] hover:text-[#ba1a1a] active:scale-90 transition p-0.5 -mt-0.5 -mr-0.5"
                             >
-                              <span className="material-symbols-outlined text-[16px]">
-                                {it.qty === 1 ? "delete" : "remove"}
-                              </span>
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
-                            <span
-                              key={it.qty}
-                              className="qty-pop text-[12px] leading-3 font-bold px-1.5 min-w-[22px] text-center"
-                            >
-                              {it.qty}
+                          </div>
+                          <p className="text-[11px] leading-3 text-[#404943] mt-0.5">{it.unit}</p>
+
+                          <div className="flex items-center justify-between mt-1.5">
+                            <span key={it.qty} className="price-pop text-[15px] leading-5 font-semibold text-[#121c2a]">
+                              ₹ {inr(it.basePrice * it.qty)}
                             </span>
-                            <button
-                              aria-label="Increase quantity"
-                              onClick={() => changeQty(it.id, 1)}
-                              disabled={isBusy || isRemoving || it.qty >= MAX_QTY}
-                              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#e0b530] active:scale-90 transition-transform disabled:opacity-40"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">add</span>
-                            </button>
+
+                            {/* Pill Stepper */}
+                            <div className={`flex items-center bg-[#F7D61D] text-black rounded-full p-0.5 shadow-sm transition-opacity ${isBusy ? "opacity-60" : ""}`}>
+                              <button
+                                aria-label="Decrease quantity"
+                                onClick={() => changeQty(it.id, -1)}
+                                disabled={isBusy || isRemoving}
+                                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#E3C21A] active:scale-90 transition-transform"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  {it.qty === 1 ? "remove" : "remove"}
+                                </span>
+                              </button>
+                              <span
+                                key={it.qty}
+                                className="qty-pop text-[12px] leading-3 font-bold px-1.5 min-w-[22px] text-center"
+                              >
+                                {it.qty}
+                              </span>
+                              <button
+                                aria-label="Increase quantity"
+                                onClick={() => changeQty(it.id, 1)}
+                                disabled={isBusy || isRemoving || it.qty >= MAX_QTY}
+                                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#E3C21A] active:scale-90 transition-transform disabled:opacity-40"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">add</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {isEmpty && !cartError && (
-                <div className="text-center py-12 fade-up">
-                  <div className="floaty w-20 h-20 mx-auto rounded-full bg-[#e6eeff] flex items-center justify-center text-black mb-4">
-                    <span className="material-symbols-outlined text-[36px]">remove_shopping_cart</span>
-                  </div>
-                  <p className="text-[16px] leading-6 font-semibold text-[#121c2a]">Your cart is empty</p>
-                  <p className="text-[12px] leading-4 text-[#404943] mt-1">
-                    Add some fresh items to get started.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate(HOME_ROUTE)}
-                    className="mt-5 px-6 py-2.5 rounded-xl bg-[#F8CB46] text-black text-[13px] font-bold shadow-md active:scale-95 transition-transform"
-                  >
-                    Start shopping
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* ================= COUPON ================= */}
-            {!isEmpty && (
-              <div ref={couponBoxRef} className="px-4 mb-6 fade-up">
-                <div
-                  onClick={() => !appliedCode && setShowOffers(true)}
-                  className={`bg-white rounded-xl p-1 shadow-sm flex items-center justify-between gap-2 pl-4 ${shaking ? "shake" : ""}`}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="material-symbols-outlined text-black text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      confirmation_number
-                    </span>
-                    <input
-                      aria-label="Coupon code input"
-                      className="w-full bg-transparent text-[12px] leading-4 font-semibold text-[#121c2a] uppercase placeholder-[#404943]/50 focus:outline-none tracking-wider"
-                      placeholder="APPLY COUPON"
-                      type="text"
-                      value={couponInput}
-                      readOnly={!!appliedCode}
-                      onFocus={() => !appliedCode && setShowOffers(true)}
-                      onChange={(e) => {
-                        setCouponInput(e.target.value);
-                        setCouponError("");
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !appliedCode) applyCoupon();
-                      }}
+                {isEmpty && !cartError && (
+                  <div className="fade-up mt-0 flex flex-col items-center justify-center rounded-2xl bg-[#F5F7FA] px-2 py-6 text-center" onClick={() => navigate('/home')}>
+                    <img
+                      src={EmptyCart}
+                      alt="No orders yet. Start shopping to place your first order."
+                      className="h-auto w-full max-w-[420px] mix-blend-multiply"
                     />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => (appliedCode ? removeCoupon() : applyCoupon())}
-                    className={`text-[12px] leading-4 font-semibold px-4 py-2 rounded-lg transition active:scale-95 ${
-                      appliedCode ? "bg-[#ffdad6] text-[#93000a]" : "bg-[#F8CB46] text-black"
-                    }`}
-                  >
-                    {appliedCode ? "Remove" : "Apply"}
-                  </button>
-                </div>
-
-                {couponError && (
-                  <div role="alert" className="slide-down mt-2 flex items-center gap-1.5 px-1 text-[#ba1a1a] text-[11px] leading-4 font-medium">
-                    <span className="material-symbols-outlined text-[16px]">error</span>
-                    <span>{couponError}</span>
-                  </div>
-                )}
-
-                {appliedCode && couponOk && (
-                  <div className="slide-down mt-2 flex items-center gap-1.5 px-1 text-[#2E7D32] text-[11px] leading-4 font-medium">
-                    <span className="material-symbols-outlined check-pop text-[16px]">check_circle</span>
-                    <span>
-                      '{appliedCode}' applied
-                      {activeCoupon.freeDelivery
-                        ? deliveryWaived > 0 ? " • Free delivery unlocked!" : " • Delivery is already free"
-                        : ` • You save ₹${inr(couponDiscount)}`}
-                    </span>
-                  </div>
-                )}
-
-                {appliedCode && !couponOk && activeCoupon && (
-                  <div className="slide-down mt-2 flex items-center gap-1.5 px-1 text-[#9a6700] text-[11px] leading-4 font-medium">
-                    <span className="material-symbols-outlined text-[16px]">warning</span>
-                    <span>{activeCoupon.reason}</span>
-                  </div>
-                )}
-
-                {/* Available offers – coupon input par click/focus karne par dikhte hain */}
-                {!appliedCode && showOffers && (
-                  <div className="slide-down mt-3 flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between px-1">
-                      <p className="text-[10px] font-semibold tracking-wider uppercase text-[#707972]">
-                        Available offers
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setShowOffers(false)}
-                        className="text-[10px] font-semibold uppercase tracking-wider text-[#707972] active:opacity-60"
-                      >
-                        Hide
-                      </button>
-                    </div>
-                    {Object.entries(COUPONS).map(([code, def], i) => {
-                      const locked = subtotal < def.min;
-                      return (
-                        <button
-                          key={code}
-                          type="button"
-                          onClick={() => applyCoupon(code)}
-                          className="fade-up flex items-center gap-3 bg-white rounded-xl px-3 py-2 shadow-sm text-left active:scale-[0.98] transition-transform"
-                          style={{ animationDelay: `${i * 70}ms` }}
-                        >
-                          <span className={`px-2 py-1 rounded-md border border-dashed text-[11px] font-bold tracking-wider ${locked ? "border-[#bfc9c1] text-[#707972]" : "border-[#B8860B] text-[#B8860B] bg-[#F8CB46]/10"}`}>
-                            {code}
-                          </span>
-                          <span className="flex-1 min-w-0 text-[11px] leading-4 text-[#404943]">{def.label}</span>
-                          <span className={`text-[11px] font-bold whitespace-nowrap ${locked ? "text-[#707972]" : "text-[#2E7D32]"}`}>
-                            {locked ? `Add ₹${inr(def.min - subtotal)}` : "Tap to apply"}
-                          </span>
-                        </button>
-                      );
-                    })}
                   </div>
                 )}
               </div>
-            )}
 
-            {/* ================= BILL DETAILS ================= */}
-            {!isEmpty && (
-              <div className="px-4 mb-8 fade-up">
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <h3 className="flex items-center gap-1.5 text-[16px] leading-6 font-semibold text-[#121c2a] mb-2">
-                    <span className="material-symbols-outlined text-[20px] text-[#B8860B]">receipt_long</span>
-                    Bill Details
-                  </h3>
-                  <div className="flex flex-col gap-2.5">
-                    <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
-                      <span className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-[#B8860B]">shopping_bag</span>
-                        Item Total
+              {/* ================= COUPON ================= */}
+              {!isEmpty && (
+                <div ref={couponBoxRef} className="px-4 mb-6 fade-up">
+                  <div
+                    onClick={() => !appliedCode && setShowOffers(true)}
+                    className={`bg-white rounded-xl p-1 shadow-sm flex items-center justify-between gap-2 pl-4 ${shaking ? "shake" : ""}`}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="material-symbols-outlined text-black text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        confirmation_number
                       </span>
-                      <span key={subtotal} className="price-pop font-semibold text-[#121c2a]">₹ {inr(subtotal)}</span>
+                      <input
+                        aria-label="Coupon code input"
+                        className="w-full bg-transparent text-[12px] leading-4 font-semibold text-[#121c2a] uppercase placeholder-[#404943]/50 focus:outline-none tracking-wider"
+                        placeholder="APPLY COUPON"
+                        type="text"
+                        value={couponInput}
+                        readOnly={!!appliedCode}
+                        onFocus={() => !appliedCode && setShowOffers(true)}
+                        onChange={(e) => {
+                          setCouponInput(e.target.value);
+                          setCouponError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !appliedCode) applyCoupon();
+                        }}
+                      />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => (appliedCode ? removeCoupon() : applyCoupon())}
+                      className={`text-[12px] leading-4 font-semibold px-4 py-2 rounded-lg transition active:scale-95 ${appliedCode ? "bg-[#ffdad6] text-[#93000a]" : "bg-[#F7D61D] text-black"
+                        }`}
+                    >
+                      {appliedCode ? "Remove" : "Apply"}
+                    </button>
+                  </div>
 
-                    <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
-                      <span className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-[#B8860B]">local_shipping</span>
-                        Delivery Fee
+                  {couponError && (
+                    <div role="alert" className="slide-down mt-2 flex items-center gap-1.5 px-1 text-[#ba1a1a] text-[11px] leading-4 font-medium">
+                      <span className="material-symbols-outlined text-[16px]">error</span>
+                      <span>{couponError}</span>
+                    </div>
+                  )}
+
+                  {appliedCode && couponOk && (
+                    <div className="slide-down mt-2 flex items-center gap-1.5 px-1 text-[#0C831F] text-[11px] leading-4 font-medium">
+                      <span className="material-symbols-outlined check-pop text-[16px]">check_circle</span>
+                      <span>
+                        '{appliedCode}' applied
+                        {activeCoupon.freeDelivery
+                          ? deliveryWaived > 0 ? " • Free delivery unlocked!" : " • Delivery is already free"
+                          : ` • You save ₹${inr(couponDiscount)}`}
                       </span>
-                      <div className="flex items-center gap-1.5">
-                        {deliveryFee === 0 && (
-                          <span className="line-through text-[#707972] text-[10px] leading-[14px]">₹ {DELIVERY_FEE}</span>
-                        )}
-                        <span key={deliveryFee} className={`price-pop font-semibold ${deliveryFee === 0 ? "text-[#2E7D32]" : "text-[#121c2a]"}`}>
-                          {deliveryFee === 0 ? "FREE" : `₹ ${deliveryFee}`}
-                        </span>
+                    </div>
+                  )}
+
+                  {appliedCode && !couponOk && activeCoupon && (
+                    <div className="slide-down mt-2 flex items-center gap-1.5 px-1 text-[#9a6700] text-[11px] leading-4 font-medium">
+                      <span className="material-symbols-outlined text-[16px]">warning</span>
+                      <span>{activeCoupon.reason}</span>
+                    </div>
+                  )}
+
+                  {/* Available offers – coupon input par click/focus karne par dikhte hain */}
+                  {!appliedCode && showOffers && (
+                    <div className="slide-down mt-3 flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between px-1">
+                        <p className="text-[10px] font-semibold tracking-wider uppercase text-[#707972]">
+                          Available offers
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShowOffers(false)}
+                          className="text-[10px] font-semibold uppercase tracking-wider text-[#707972] active:opacity-60"
+                        >
+                          Hide
+                        </button>
                       </div>
+                      {Object.entries(COUPONS).map(([code, def], i) => {
+                        const locked = subtotal < def.min;
+                        return (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => applyCoupon(code)}
+                            className="fade-up flex items-center gap-3 bg-white rounded-xl px-3 py-2 shadow-sm text-left active:scale-[0.98] transition-transform"
+                            style={{ animationDelay: `${i * 70}ms` }}
+                          >
+                            <span className={`px-2 py-1 rounded-md border border-dashed text-[11px] font-bold tracking-wider ${locked ? "border-[#bfc9c1] text-[#707972]" : "border-[#B8860B] text-[#B8860B] bg-[#F7D61D]/10"}`}>
+                              {code}
+                            </span>
+                            <span className="flex-1 min-w-0 text-[11px] leading-4 text-[#404943]">{def.label}</span>
+                            <span className={`text-[11px] font-bold whitespace-nowrap ${locked ? "text-[#707972]" : "text-[#0C831F]"}`}>
+                              {locked ? `Add ₹${inr(def.min - subtotal)}` : "Tap to apply"}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
+                  )}
+                </div>
+              )}
 
-                    <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
-                      <span className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-[#B8860B]">inventory_2</span>
-                        Handling Fee
-                      </span>
-                      <span className="font-semibold text-[#121c2a]">₹ {HANDLING_FEE}</span>
-                    </div>
-
-                    {couponDiscount > 0 && (
-                      <div className="slide-down flex justify-between items-center text-[12px] leading-4 text-[#2E7D32]">
+              {/* ================= BILL DETAILS ================= */}
+              {!isEmpty && (
+                <div className="px-4 mb-8 fade-up">
+                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <h3 className="flex items-center gap-1.5 text-[16px] leading-6 font-semibold text-[#121c2a] mb-2">
+                      <span className="material-symbols-outlined text-[20px] text-[#B8860B]">receipt_long</span>
+                      Bill Details
+                    </h3>
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
                         <span className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[16px]">sell</span>
-                          Coupon ({appliedCode})
+                          <span className="material-symbols-outlined text-[16px] text-[#B8860B]">shopping_bag</span>
+                          Item Total
                         </span>
-                        <span className="font-semibold">- ₹ {inr(couponDiscount)}</span>
+                        <span key={subtotal} className="price-pop font-semibold text-[#121c2a]">₹ {inr(subtotal)}</span>
                       </div>
-                    )}
 
-                    <div className="h-px bg-[#dee9fc] my-1"></div>
-                    <div className="flex justify-between items-center pt-0.5">
-                      <div>
-                        <span className="flex items-center gap-1.5 text-[16px] leading-6 font-semibold text-[#121c2a]">
-                          <span className="material-symbols-outlined text-[20px] text-[#B8860B]">payments</span>
-                          To Pay
+                      <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
+                        <span className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[16px] text-[#B8860B]">local_shipping</span>
+                          Delivery Fee
                         </span>
-                        {savedAmount > 0 && (
-                          <p className="slide-down text-[10px] leading-[14px] text-[#2E7D32] font-medium">
-                            Saved ₹ {inr(savedAmount)} on this order
-                          </p>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {deliveryFee === 0 && (
+                            <span className="line-through text-[#707972] text-[10px] leading-[14px]">₹ {DELIVERY_FEE}</span>
+                          )}
+                          <span key={deliveryFee} className={`price-pop font-semibold ${deliveryFee === 0 ? "text-[#0C831F]" : "text-[#121c2a]"}`}>
+                            {deliveryFee === 0 ? "FREE" : `₹ ${deliveryFee}`}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[20px] leading-7 tracking-tight font-semibold text-[#121c2a]">
+
+                      <div className="flex justify-between items-center text-[#404943] text-[12px] leading-4">
+                        <span className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[16px] text-[#B8860B]">inventory_2</span>
+                          Handling Fee
+                        </span>
+                        <span className="font-semibold text-[#121c2a]">₹ {HANDLING_FEE}</span>
+                      </div>
+
+                      {couponDiscount > 0 && (
+                        <div className="slide-down flex justify-between items-center text-[12px] leading-4 text-[#0C831F]">
+                          <span className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[16px]">sell</span>
+                            Coupon ({appliedCode})
+                          </span>
+                          <span className="font-semibold">- ₹ {inr(couponDiscount)}</span>
+                        </div>
+                      )}
+
+                      <div className="h-px bg-[#dee9fc] my-1"></div>
+                      <div className="flex justify-between items-center pt-0.5">
+                        <div>
+                          <span className="flex items-center gap-1.5 text-[16px] leading-6 font-semibold text-[#121c2a]">
+                            <span className="material-symbols-outlined text-[20px] text-[#B8860B]">payments</span>
+                            To Pay
+                          </span>
+                          {savedAmount > 0 && (
+                            <p className="slide-down text-[10px] leading-[14px] text-[#0C831F] font-medium">
+                              Saved ₹ {inr(savedAmount)} on this order
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-[20px] leading-7 tracking-tight font-semibold text-[#121c2a]">
+                          ₹ {inr(animatedTotal)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Policy */}
+              {!isEmpty && (
+                <div className="px-4 mb-4 fade-up">
+                  <div className="bg-[#eff4ff] rounded-xl p-2.5 flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-[#707972] text-[18px] mt-0.5">shield</span>
+                    <p className="text-[11px] leading-relaxed text-[#404943]">
+                      Guaranteed 100% organic freshness. Easy instant refunds at
+                      doorstep if items do not meet expectations.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ---------- Pay (policy ke neeche, scroll content ke andar) ---------- */}
+              {!isEmpty && (
+                <div className="px-4 mb-4 fade-up">
+                  <div className="bg-white rounded-xl p-3.5 shadow-sm flex items-center justify-between gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] leading-[14px] text-[#404943] tracking-wider uppercase font-semibold">
+                        Total to Pay
+                      </span>
+                      <span className="text-[24px] tracking-tight font-bold text-[#121c2a] leading-none">
                         ₹ {inr(animatedTotal)}
                       </span>
                     </div>
+                    <button
+                      onClick={handlePay}
+                      disabled={payState !== "idle" || isEmpty || anyBusy}
+                      className={`flex-1 max-w-[200px] h-11 bg-[#0C831F] text-white rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-[#259535] active:scale-[0.98] transition-all disabled:opacity-70 ${payState === "idle" && !anyBusy ? "pay-shine" : ""}`}
+                    >
+                      {payState === "idle" && (
+                        <>
+                          <span>Proceed to Pay</span>
+                          <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                        </>
+                      )}
+                      {payState === "loading" && (
+                        <>
+                          <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                          <span>Securing...</span>
+                        </>
+                      )}
+                      {payState === "done" && (
+                        <>
+                          <span className="material-symbols-outlined check-pop text-[20px]">check_circle</span>
+                          <span>Redirecting</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Policy */}
-            {!isEmpty && (
-              <div className="px-4 mb-4 fade-up">
-                <div className="bg-[#eff4ff] rounded-xl p-2.5 flex items-start gap-2.5">
-                  <span className="material-symbols-outlined text-[#707972] text-[18px] mt-0.5">shield</span>
-                  <p className="text-[11px] leading-relaxed text-[#404943]">
-                    Guaranteed 100% organic freshness. Easy instant refunds at
-                    doorstep if items do not meet expectations.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* ---------- Pay (policy ke neeche, scroll content ke andar) ---------- */}
-            {!isEmpty && (
-              <div className="px-4 mb-4 fade-up">
-                <div className="bg-white rounded-xl p-3.5 shadow-sm flex items-center justify-between gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] leading-[14px] text-[#404943] tracking-wider uppercase font-semibold">
-                      Total to Pay
-                    </span>
-                    <span className="text-[24px] tracking-tight font-bold text-[#121c2a] leading-none">
-                      ₹ {inr(animatedTotal)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handlePay}
-                    disabled={payState !== "idle" || isEmpty || anyBusy}
-                    className={`flex-1 max-w-[200px] h-11 bg-[#F8CB46] text-black rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-[#e0b530] active:scale-[0.98] transition-all disabled:opacity-70 ${payState === "idle" && !anyBusy ? "pay-shine" : ""}`}
-                  >
-                    {payState === "idle" && (
-                      <>
-                        <span>Proceed to Pay</span>
-                        <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                      </>
-                    )}
-                    {payState === "loading" && (
-                      <>
-                        <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                        <span>Securing...</span>
-                      </>
-                    )}
-                    {payState === "done" && (
-                      <>
-                        <span className="material-symbols-outlined check-pop text-[20px]">check_circle</span>
-                        <span>Redirecting</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Pay button ke neeche khaali jagah (scroll karne par button screen ke edge/nav se door rahe) */}
-            {!isEmpty && (
-              <div
-                aria-hidden="true"
-                className="shrink-0"
-                style={{ height: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
-              />
-            )}
-          </div>
-        </main>
+              {/* Pay button ke neeche khaali jagah (scroll karne par button screen ke edge/nav se door rahe) */}
+              {!isEmpty && (
+                <div
+                  aria-hidden="true"
+                  className="shrink-0"
+                  style={{ height: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
+                />
+              )}
+            </div>
+          </main>
 
 
-        {/* ---------- Bottom Navigation (Proceed to Pay bar ke neeche) ---------- */}
-       
+          {/* ---------- Bottom Navigation (Proceed to Pay bar ke neeche) ---------- */}
+
 
         </div>
       </div>
@@ -1018,7 +989,7 @@ const CartScreen = () => {
               key={toast.key}
               className="toast-in pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-[#27313f] py-2 pl-3 pr-4 text-[12px] font-semibold text-[#eaf1ff] shadow-lg"
             >
-              <span className={`material-symbols-outlined text-[18px] ${toast.type === "error" ? "text-[#ff8a80]" : "text-[#F8CB46]"}`}>
+              <span className={`material-symbols-outlined text-[18px] ${toast.type === "error" ? "text-[#ff8a80]" : "text-[#F7D61D]"}`}>
                 {toast.type === "error" ? "error" : "check_circle"}
               </span>
               <span className="truncate">{toast.message}</span>
@@ -1079,7 +1050,7 @@ const CartScreen = () => {
                           </p>
                         </div>
                         {active && (
-                          <span className="material-symbols-outlined check-pop text-[20px] text-[#2E9E4F]">check_circle</span>
+                          <span className="material-symbols-outlined check-pop text-[20px] text-[#259535]">check_circle</span>
                         )}
                       </div>
                     );

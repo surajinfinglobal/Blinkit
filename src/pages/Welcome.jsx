@@ -15,12 +15,12 @@ const handleSignUp = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen overflow-hidden text-slate-800 antialiased font-sans bg-[#F8CB46]">
+    <div className="flex items-center justify-center min-h-screen overflow-hidden text-slate-800 antialiased font-sans bg-white">
       {/* Mobile Device Container */}
       <div className="mobile-frame w-full relative flex flex-col max-w-[440px] min-h-screen mx-auto shadow-2xl bg-white overflow-hidden">
         
         {/* Top Illustration Area (Background Image) */}
-        <section className="relative w-full flex-1 bg-[#F8CB46] overflow-hidden">
+        <section className="relative w-full flex-1 bg-white overflow-hidden">
           {/* Image ko absolute kiya taaki yeh pure section ko fill kare */}
           <div className="absolute inset-0 w-full h-full">
             <img
@@ -55,7 +55,7 @@ const handleSignUp = () => {
             <button
               type="button"
               onClick={handleLogin}
-              className="group w-full h-[52px] bg-[#F8CB46] hover:bg-[#F8CB46] active:scale-[0.98] transition-all rounded-full flex items-center justify-center text-black text-[16px] font-bold shadow-md shadow-[#F8CB46]/20 space-x-2"
+              className="group w-full h-[52px] bg-[#F7D61D] hover:bg-[#F7D61D] active:scale-[0.98] transition-all rounded-full flex items-center justify-center text-black text-[16px] font-bold shadow-md shadow-[#F7D61D]/20 space-x-2"
             >
               <span>Log In</span>
               <svg
@@ -77,7 +77,7 @@ const handleSignUp = () => {
             <button
               type="button"
               onClick={handleSignUp}
-              className="w-full h-[52px] bg-white border-[1.5px] border-[#F8CB46] active:bg-yellow-50 active:scale-[0.98] transition-all rounded-full flex items-center justify-center text-[#F8CB46] text-[16px] font-bold"
+              className="w-full h-[52px] bg-white border-[1.5px] border-[#F7D61D] active:bg-yellow-50 active:scale-[0.98] transition-all rounded-full flex items-center justify-center text-black  text-[16px] font-bold"
             >
               Create New Account
             </button>
@@ -91,7 +91,7 @@ const handleSignUp = () => {
       {/* Custom CSS for mobile frame */}
       <style>{`
         body {
-          background-color: #F8CB46;
+          background-color: #F7D61D;
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           overflow: hidden;

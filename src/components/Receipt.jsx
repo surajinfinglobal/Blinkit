@@ -9,7 +9,6 @@ export default function TaxInvoice() {
   // Fonts & Icons load karna
   useEffect(() => {
     const links = [
-      "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap",
       "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
     ];
     const added = links.map((href) => {
@@ -62,10 +61,10 @@ export default function TaxInvoice() {
   };
 
   return (
-    <div className="bg-[#f9f9f7] font-['Plus_Jakarta_Sans',sans-serif] text-[#1a1c1b] flex flex-col min-h-screen relative">
+    <div className="bg-[#F5F7FA] font-['Plus_Jakarta_Sans',sans-serif] text-[#1a1c1b] flex flex-col min-h-screen relative">
       
       {/* ================= FIXED HEADER ================= */}
-      <header className="fixed top-0 w-full z-50 pt-safe bg-[#f9f9f7]/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+      <header className="fixed top-0 w-full z-50 pt-safe bg-[#F5F7FA]/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
         <div className="h-16 px-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 flex-1 min-w-0">
             <button
@@ -102,13 +101,13 @@ export default function TaxInvoice() {
       </header>
 
       {/* ================= MAIN CONTENT ================= */}
-      <main className="flex flex-col relative w-full pt-16 pb-safe bg-[#f9f9f7] px-4">
+      <main className="flex flex-col relative w-full pt-16 pb-safe bg-[#F5F7FA] px-4">
         <div className="flex flex-col w-full pb-8">
           
           {/* Order Meta Header */}
           <div className="flex items-center justify-between py-2 mb-1">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#f8cb46] text-[#241a00] shadow-sm">
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F7D61D] text-[#241a00] shadow-sm">
                 <span className="material-symbols-outlined text-[18px]">receipt_long</span>
               </span>
               <div>
@@ -116,7 +115,7 @@ export default function TaxInvoice() {
                 <p className="text-[13px] leading-[18px] text-[#4e4634]">24 Oct 2023 • 4:18 PM</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#83e596] text-[#00672d] text-[13px] font-semibold shadow-sm">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#EAF5EC] text-[#0C831F] text-[13px] font-semibold shadow-sm">
               <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                 check_circle
               </span>
@@ -127,7 +126,7 @@ export default function TaxInvoice() {
           {/* Invoice Paper Card */}
           <div className="relative bg-white rounded-xl shadow-md overflow-hidden">
             {/* Top Gradient Strip */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-[#f8cb46] via-[#edc13d] to-[#83e596]"></div>
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#F7D61D] via-[#F7D61D] to-[#EAF5EC]"></div>
             
             <div className="p-4 sm:p-5 flex flex-col gap-4">
               
@@ -217,7 +216,7 @@ export default function TaxInvoice() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-[15px] font-bold">$3.99</p>
-                        <span className="text-[11px] font-bold text-[#006d30]">GST 5% incl.</span>
+                        <span className="text-[11px] font-bold text-[#6b7280]">GST 5% incl.</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-4 gap-1 pt-1.5 px-2 py-1.5 rounded bg-[#eeeeec] text-center">
@@ -242,7 +241,7 @@ export default function TaxInvoice() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-[15px] font-bold">$2.52</p>
-                        <span className="text-[11px] font-bold text-[#006d30]">GST 5% incl.</span>
+                        <span className="text-[11px] font-bold text-[#6b7280]">GST 5% incl.</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-4 gap-1 pt-1.5 px-2 py-1.5 rounded bg-[#eeeeec] text-center">
@@ -283,11 +282,11 @@ export default function TaxInvoice() {
                   <div className="flex justify-between items-center">
                     <span className="text-[#4e4634] flex items-center gap-1">
                       Delivery Partner Fee
-                      <span className="px-1.5 py-0.5 rounded bg-[#83e596] text-[#00672d] text-[11px] font-bold uppercase">Free</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#EAF5EC] text-[#0C831F] text-[11px] font-bold uppercase">Free</span>
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className="line-through text-[#4e4634] text-[13px]">$1.99</span>
-                      <span className="text-[13px] font-semibold text-[#006d30]">$0.00</span>
+                      <span className="text-[13px] font-semibold text-[#6b7280]">$0.00</span>
                     </div>
                   </div>
                   <div className="flex justify-between">
@@ -310,7 +309,7 @@ export default function TaxInvoice() {
                   <div className="mt-2 pt-3 flex justify-between items-baseline bg-white p-3 rounded-lg shadow-sm">
                     <div>
                       <p className="text-[17px] font-semibold">Total Amount Paid</p>
-                      <p className="text-[13px] text-[#006d30] flex items-center gap-1">
+                      <p className="text-[13px] text-[#6b7280] flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">format_image_left</span>
                         Payment verified via Apple Pay
                       </p>
@@ -377,7 +376,7 @@ export default function TaxInvoice() {
                 </div>
                 <div className="w-px h-6 bg-[#d1c5ae]"></div>
                 <div className="flex-1">
-                  <span className="material-symbols-outlined text-[#006d30] text-[20px]">psychology_alt</span>
+                  <span className="material-symbols-outlined text-[#6b7280] text-[20px]">psychology_alt</span>
                   <p className="text-[11px] font-bold mt-0.5">100% Tax Compliant</p>
                 </div>
                 <div className="w-px h-6 bg-[#d1c5ae]"></div>
@@ -391,13 +390,13 @@ export default function TaxInvoice() {
             {/* Perforated bottom edge (receipt visual) */}
             <div className="relative py-2 bg-white">
               <div className="flex items-center justify-between px-3">
-                <div className="w-3.5 h-3.5 rounded-full bg-[#f9f9f7]"></div>
+                <div className="w-3.5 h-3.5 rounded-full bg-[#F5F7FA]"></div>
                 <div className="flex-1 flex justify-evenly">
                   {[...Array(12)].map((_, i) => (
                     <div key={i} className="w-2 h-0.5 rounded-full bg-[#e2e3e1]"></div>
                   ))}
                 </div>
-                <div className="w-3.5 h-3.5 rounded-full bg-[#f9f9f7]"></div>
+                <div className="w-3.5 h-3.5 rounded-full bg-[#F5F7FA]"></div>
               </div>
             </div>
           </div>
@@ -408,7 +407,7 @@ export default function TaxInvoice() {
               <button
                 onClick={handleDownload}
                 disabled={isDownloading}
-                className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-full bg-[#f8cb46] text-[#241a00] text-[15px] font-bold active:scale-[0.98] transition-transform shadow-sm disabled:opacity-80"
+                className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-full bg-[#F7D61D] text-[#241a00] text-[15px] font-bold active:scale-[0.98] transition-transform shadow-sm disabled:opacity-80"
               >
                 {isDownloading ? (
                   <>

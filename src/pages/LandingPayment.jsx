@@ -10,12 +10,16 @@ export default function LandingPayment({ onFinish, onBack }) {
   }
 
   return (
-    <main className="w-full max-w-[412px] h-[884px] bg-[#f5f9fc] sm:rounded-[48px] shadow-2xl relative flex flex-col justify-between overflow-hidden border border-slate-200/50 font-sans">
+    <div
+      className="flex w-full items-center justify-center overflow-hidden bg-[#F5F7FA]"
+      style={{ minHeight: 'max(100vh, 884px)' }}
+    >
+      <main className="w-full max-w-[450px] h-[884px] bg-[#F5F7FA] sm:rounded-[48px] shadow-2xl relative flex flex-col justify-between overflow-hidden border border-slate-200/50 font-sans">
      
       {/* Illustration Section */}
       <section className="relative w-full flex-1 flex items-center justify-center overflow-hidden">
         {/* Container jiska background page ke background se match karta hai */}
-        <div className="w-full h-full max-w-[400px] max-h-[400px] relative flex items-center justify-center overflow-hidden bg-[#f5f9fc]">
+        <div className="w-full h-full max-w-[400px] max-h-[400px] relative flex items-center justify-center overflow-hidden bg-[#F5F7FA]">
           <img
             alt="Easy & Safe Payment"
             /* object-cover aur mix-blend-multiply se image ka white background merge ho jayega */
@@ -43,7 +47,7 @@ export default function LandingPayment({ onFinish, onBack }) {
           <span className="w-2 h-2 bg-[#DCE4EC] rounded-full inline-block" />
           <span
             aria-current="true"
-            className="w-6 h-2 bg-[#F8CB46] rounded-full transition-all duration-300 inline-block"
+            className="w-6 h-2 bg-[#F7D61D] rounded-full transition-all duration-300 inline-block"
           />
         </nav>
 
@@ -51,7 +55,7 @@ export default function LandingPayment({ onFinish, onBack }) {
         <button
           type="button"
           onClick={handleFinish}
-          className="w-full py-4 bg-[#F8CB46] hover:bg-[#F8CB46] active:scale-[0.99] transition duration-150 rounded-full text-black text-[17px] font-bold shadow-sm flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-yellow-600/20"
+          className="w-full py-4 bg-[#F7D61D] hover:bg-[#F7D61D] active:scale-[0.99] transition duration-150 rounded-full text-black text-[17px] font-bold shadow-sm flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-yellow-600/20"
         >
           Get Started
         </button>
@@ -61,6 +65,7 @@ export default function LandingPayment({ onFinish, onBack }) {
           <div className="w-32 h-[4.5px] bg-slate-900 rounded-full opacity-80" />
         </div>
       </article>
-    </main>
+      </main>
+    </div>
   )
 }

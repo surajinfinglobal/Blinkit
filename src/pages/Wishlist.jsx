@@ -1,56 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
 import { addToCart } from "../services/cartService";
-
-/* ================= DATA ================= */
-
-const INITIAL_PRODUCTS = [
-  {
-    id: "prod-1",
-    name: "Organic Broccoli",
-    unit: "Per/ kg",
-    price: 190,
-    rating: 4.2,
-    reviews: 128,
-    tag: "Fresh Farm",
-    category: "vegetables",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBOWta7vbk7DzYPsP7PHZSVCyu3H1QoiO2Y-f0IrZgV0UyzzCALOnAI1uX3tsL4jr_mhixgWCwEM3GVGK7ANlUoF3lw4lqMJJ7skbvrsvzFq_TTiBG7m2uLhs2oJMNYpMTjzC43paP_jW7OSfKkaa07SxOS0sIHz7win9Nd8fhniniEWTrvAMbFDcY9K69i0u51Zf8KZ2KaxvMX5mIVzfmk5dVDU36tBlLP5ZKrHsPZqW9OniPk2jCV",
-  },
-  {
-    id: "prod-2",
-    name: "Fresh Brinjels",
-    unit: "Per/ kg",
-    price: 80,
-    rating: 3.8,
-    reviews: 64,
-    tag: null,
-    category: "vegetables",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCrqY12Un8zM2yIBrdXzH2uDxI_XuPg9Vo8ITgio0891rH4iJ_HmG2X0YbkU3hr-ZovEXSuovzd7gChFExlmdsanoAa2O_kJuV-Fc_WJYtu6xllbP1py5kX8gkW7dXVGVaVIuSd_6f-eJzew511t2kjpSKTbY9iwsiw1GLMcMKLwObw7rvM9y_xp04l0aVcsjd92glsQUly_xNo9S2m_JrQf24n-19ixrH046UqmkCQhBYRXwHWrj97",
-  },
-  {
-    id: "prod-3",
-    name: "Fresh Corriander",
-    unit: "Per/ kg",
-    price: 70,
-    rating: 4.8,
-    reviews: 312,
-    tag: "Hydroponic",
-    category: "vegetables",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBbSayYJgZG0Ve_0K0HiojeH3G1Gn9YG8dFr_WJWq6Vzhwwgu4QmmWz4QsoxqpROep1zDSjCNS2vH1m6q7z0CqNmn4vqoxrgY8UOOemzCmbqEzg6ND0IbDSLajpAITyRjZuw4pNKLswnMGQtFBZNybWX7bnfvl_Bl5FvfioiDaUxFzkU7CoWBr7Jri38zZMa-wqmnNtUnSErl4hmomcuxW8YrGNLzXxik8Ihw-tL1Vew2v4FtP7Nd6X",
-  },
-  {
-    id: "prod-4",
-    name: "Mixed Vegetables Salad Pack",
-    unit: "Per/ pack",
-    price: 220,
-    rating: 4.5,
-    reviews: 95,
-    tag: null,
-    category: "packs", // pehle 'fruits' tha, galat category thi
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBTRgEG-ldJT0vp6VK4FbF18BOI7YM8NLjjccB3-I6ecyNvUMmN2Aa1Nv_gWp8TT1ydpxYZjAyepp3jUjRhdXbOZkNJaLTMDw8h9woRCmL2EbwhLQ3km8sqCHcmMaY0ybtEnUikQzDGYPXorSli01aDNSi3OMU9qCR9zF97J-rG66dLADO4GyloAFVuYRgBs7L5v_-i0-aGBw9d59NBcqBSyaenYRHX9yIOpjU-kCSF6f5kXVlkNmaB",
-  },
-];
+import {
+  clearFavoritesAPI,
+  getFavoritesAPI,
+  removeFavoriteAPI,
+  addFavoriteAPI,
+} from "../services/favoriteService.js";
+import { productsByCategory } from "../services/homeData.js";
 
 const CATEGORY_LABELS = {
   vegetables: "Vegetables",
@@ -65,28 +24,18 @@ const SORT_OPTIONS = [
   { id: "rating", label: "Top rated" },
 ];
 
-const FREE_DELIVERY_AT = 499;
-const WISHLIST_KEY = "wishlist_items";
-
-const readWishlist = () => {
-  try {
-    const v = JSON.parse(localStorage.getItem(WISHLIST_KEY));
-    return Array.isArray(v) ? v : INITIAL_PRODUCTS;
-  } catch {
-    return INITIAL_PRODUCTS;
-  }
-};
+const PRODUCT_CATALOG = Object.values(productsByCategory).flat();
+const PRODUCTS_BY_ID = new Map(PRODUCT_CATALOG.map((product) => [product.id, product]));
 
 /* ================= SCREEN ================= */
 
 const FavouriteScreen = () => {
   const navigate = useNavigate();
 
-  // ---- Material Symbols + Inter font ----
+  // ---- Material Symbols font ----
   useEffect(() => {
     const links = [
       "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block",
-      "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=block",
     ];
     const added = links.map((href) => {
       const l = document.createElement("link");
@@ -99,30 +48,77 @@ const FavouriteScreen = () => {
   }, []);
 
   // ---- State ----
-  const [products, setProducts] = useState(readWishlist);
+  const [products, setProducts] = useState([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(() => Boolean(localStorage.getItem("token")));
+  const [favoritesError, setFavoritesError] = useState("");
+  const [favoritesReload, setFavoritesReload] = useState(0);
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("default");
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [toast, setToast] = useState(null); // { message, type, action }
   const [showClearModal, setShowClearModal] = useState(false);
   const [addingAll, setAddingAll] = useState(false);
+  const [addedAll, setAddedAll] = useState(false);
+  const [clearingFavorites, setClearingFavorites] = useState(false);
   const toastTimer = useRef(null);
+  const addedAllTimer = useRef(null);
+  const toastSequence = useRef(0);
+  const sortDropdownRef = useRef(null);
 
-  // Wishlist save karo (refresh ke baad bhi rahe)
   useEffect(() => {
-    try {
-      localStorage.setItem(WISHLIST_KEY, JSON.stringify(products));
-    } catch {
-      /* ignore */
-    }
-  }, [products]);
+    let cancelled = false;
+    if (!localStorage.getItem("token")) return undefined;
 
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+    const loadFavorites = async () => {
+      try {
+        const favoriteIds = await getFavoritesAPI();
+        const favoriteProducts = favoriteIds
+          .map((id) => PRODUCTS_BY_ID.get(String(id)))
+          .filter(Boolean);
+        if (!cancelled) setProducts(favoriteProducts);
+      } catch (error) {
+        console.error("Favourites load error:", error);
+        if (!cancelled) setFavoritesError(error.message || "Favourites load nahi hue");
+      } finally {
+        if (!cancelled) setLoadingFavorites(false);
+      }
+    };
+    loadFavorites();
+    return () => {
+      cancelled = true;
+    };
+  }, [favoritesReload]);
+
+  useEffect(() => () => {
+    clearTimeout(toastTimer.current);
+    clearTimeout(addedAllTimer.current);
+  }, []);
+
+  useEffect(() => {
+    if (!sortMenuOpen) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!sortDropdownRef.current?.contains(event.target)) setSortMenuOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setSortMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("touchstart", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("touchstart", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [sortMenuOpen]);
 
   // ---- Toast helper (optional action button: Undo / View Cart) ----
   const showToast = (message, { action = null, type = "success" } = {}) => {
     clearTimeout(toastTimer.current);
-    setToast({ message, type, action, key: Date.now() });
+    setToast({ message, type, action, key: ++toastSequence.current });
     toastTimer.current = setTimeout(() => setToast(null), action ? 4000 : 2200);
   };
 
@@ -142,40 +138,50 @@ const FavouriteScreen = () => {
     ];
   }, [products]);
 
-  // Agar active category khaali ho gayi to All pe wapas
-  useEffect(() => {
-    if (activeFilter !== "all" && !chips.some((c) => c.id === activeFilter)) {
-      setActiveFilter("all");
-    }
-  }, [chips, activeFilter]);
+  const selectedFilter = chips.some((chip) => chip.id === activeFilter) ? activeFilter : "all";
 
   const filteredProducts = useMemo(() => {
     let list = products.filter(
       (p) =>
-        (activeFilter === "all" || p.category === activeFilter) &&
+        (selectedFilter === "all" || p.category === selectedFilter) &&
         p.name.toLowerCase().includes(search.trim().toLowerCase())
     );
     if (sortBy === "price-asc") list = [...list].sort((a, b) => a.price - b.price);
     if (sortBy === "price-desc") list = [...list].sort((a, b) => b.price - a.price);
     if (sortBy === "rating") list = [...list].sort((a, b) => b.rating - a.rating);
     return list;
-  }, [products, activeFilter, search, sortBy]);
+  }, [products, selectedFilter, search, sortBy]);
 
-  const wishlistTotal = products.reduce((sum, p) => sum + p.price, 0);
-  const progress = Math.min(100, Math.round((wishlistTotal / FREE_DELIVERY_AT) * 100));
-  const showEmpty = filteredProducts.length === 0;
+  const wishlistTotal = filteredProducts.reduce((sum, p) => sum + p.price, 0);
+  const showEmpty = !loadingFavorites && !favoritesError && filteredProducts.length === 0;
 
   // ---- Actions ----
-  const handleRemove = (id) => {
+  const handleRemove = async (id) => {
     const index = products.findIndex((p) => p.id === id);
     const item = products[index];
-    if (!item) return;
+    if (!item) return false;
+    try {
+      await removeFavoriteAPI(id);
+    } catch (error) {
+      console.error("Favourite remove error:", error);
+      showToast(error.message || "Favourite remove nahi hua", { type: "error" });
+      return false;
+    }
+
     setProducts((prev) => prev.filter((p) => p.id !== id));
     showToast("Removed from favourites", {
       action: {
         label: "Undo",
-        onClick: () => {
+        onClick: async () => {
+          try {
+            await addFavoriteAPI(id);
+          } catch (error) {
+            console.error("Favourite restore error:", error);
+            showToast(error.message || "Favourite restore nahi hua", { type: "error" });
+            return;
+          }
           setProducts((prev) => {
+            if (prev.some((product) => product.id === id)) return prev;
             const copy = [...prev];
             copy.splice(Math.min(index, copy.length), 0, item);
             return copy;
@@ -184,21 +190,37 @@ const FavouriteScreen = () => {
         },
       },
     });
+    return true;
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     const backup = products;
-    setProducts([]);
-    setShowClearModal(false);
-    showToast("All favourites cleared", {
-      action: {
-        label: "Undo",
-        onClick: () => {
-          setProducts(backup);
-          setToast(null);
+    setClearingFavorites(true);
+    try {
+      await clearFavoritesAPI();
+      setProducts([]);
+      setShowClearModal(false);
+      showToast("All favourites cleared", {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await Promise.all(backup.map((product) => addFavoriteAPI(product.id)));
+              setProducts(backup);
+              setToast(null);
+            } catch (error) {
+              console.error("Favourite restore error:", error);
+              showToast(error.message || "Favourites restore nahi hue", { type: "error" });
+            }
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error("Favourite clear error:", error);
+      showToast(error.message || "Favourites clear nahi hue", { type: "error" });
+    } finally {
+      setClearingFavorites(false);
+    }
   };
 
   const handleAddToCart = async (product) => {
@@ -222,6 +244,9 @@ const FavouriteScreen = () => {
     const ok = results.filter((r) => r.status === "fulfilled").length;
     setAddingAll(false);
     if (ok === products.length) {
+      setAddedAll(true);
+      clearTimeout(addedAllTimer.current);
+      addedAllTimer.current = setTimeout(() => setAddedAll(false), 1600);
       showToast(`${ok} items added to cart!`, {
         action: { label: "View cart", onClick: () => navigate("/cart") },
       });
@@ -277,14 +302,13 @@ const FavouriteScreen = () => {
       `}</style>
 
       <div
-        className="bg-[#f8f9ff] text-[#121c2a] antialiased flex flex-col min-h-screen"
-        style={{ fontFamily: "'Inter', sans-serif" }}
+        className="bg-[#F5F7FA] text-[#121c2a] antialiased flex flex-col min-h-screen"
       >
-        <main className="pt-0 flex-1 flex flex-col relative w-full bg-[#f8f9ff] pb-28">
+        <main className="pt-0 flex-1 flex flex-col relative w-full bg-[#F5F7FA] pb-28">
           <div className="flex flex-col w-full">
 
             {/* ================= Brand Banner ================= */}
-            <div className="w-full bg-[#F8CB46] text-black px-4 pt-4 pb-4 rounded-b-3xl shadow-sm overflow-hidden sticky top-0 z-30 header-in">
+            <div className="w-full bg-[#F7D61D] text-black px-4 pt-4 pb-4 rounded-b-3xl shadow-sm overflow-hidden sticky top-0 z-30 header-in">
               <div className="absolute -right-6 -bottom-8 w-28 h-28 bg-black/5 rounded-full blur-xl pointer-events-none"></div>
               <div className="relative z-10 flex items-center justify-between">
                 <div>
@@ -326,7 +350,7 @@ const FavouriteScreen = () => {
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search in wishlist..."
                     aria-label="Search wishlist"
-                    className="w-full h-10 pl-10 pr-9 rounded-full bg-white text-[13px] text-[#121c2a] placeholder-[#707972] shadow-sm outline-none border border-transparent focus:border-[#F8CB46] transition"
+                    className="w-full h-10 pl-10 pr-9 rounded-full bg-white text-[13px] text-[#121c2a] placeholder-[#707972] shadow-sm outline-none border border-transparent focus:border-[#F7D61D] transition"
                   />
                   {search && (
                     <button
@@ -343,17 +367,17 @@ const FavouriteScreen = () => {
 
             {/* ================= Filter Chips ================= */}
             {products.length > 0 && (
-              <div className="w-full px-4 mt-2.5">
+              <div className="w-full px-4 mt-2.5 pt-1.5 pb-1.5">
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
                   {chips.map((chip) => {
-                    const isActive = activeFilter === chip.id;
+                    const isActive = selectedFilter === chip.id;
                     return (
                       <button
                         key={chip.id}
                         onClick={() => setActiveFilter(chip.id)}
                         className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] leading-4 tracking-[0.02em] font-semibold shadow-sm transition-all duration-200 active:scale-95 ${
                           isActive
-                            ? "bg-[#F8CB46] text-black scale-105"
+                            ? "bg-[#F7D61D] text-black scale-105"
                             : "bg-white text-[#404943] hover:bg-gray-50"
                         }`}
                       >
@@ -367,31 +391,68 @@ const FavouriteScreen = () => {
 
             {/* ================= Count + Sort ================= */}
             {products.length > 0 && (
-              <div className="px-4 mt-1.5 mb-1 flex items-center justify-between">
-                <span className="text-[11px] text-[#707972] font-medium">
+              <div className="px-4 mt-1.5 mb-1 flex items-center justify-between gap-3 py-1.5">
+                <span className="min-w-0 text-[11px] text-[#707972] font-medium">
                   {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "items"}
                 </span>
-                <label className="flex items-center gap-1 text-[11px] text-[#404943] font-semibold">
-                  <span className="material-symbols-outlined text-[16px]">swap_vert</span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
+                <div ref={sortDropdownRef} className="relative z-40 min-w-0 max-w-[70%]">
+                  <button
+                    type="button"
                     aria-label="Sort wishlist"
-                    className="bg-transparent outline-none cursor-pointer text-[11px] font-semibold"
+                    aria-haspopup="listbox"
+                    aria-expanded={sortMenuOpen}
+                    onClick={() => setSortMenuOpen((open) => !open)}
+                    className="relative flex h-9 w-full min-w-0 items-center rounded-full border border-[#e5e7eb] bg-white py-0 pl-8 pr-8 text-left text-[11px] font-semibold text-[#27313f] shadow-sm transition hover:border-[#F7D61D] focus:border-[#F7D61D] focus:outline-none focus:ring-2 focus:ring-[#F7D61D]/30"
                   >
-                    {SORT_OPTIONS.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  <span className="material-symbols-outlined pointer-events-none absolute left-2.5 text-[16px] text-[#707972]">
+                    swap_vert
+                  </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {SORT_OPTIONS.find((option) => option.id === sortBy)?.label}
+                    </span>
+                  <span className="material-symbols-outlined pointer-events-none absolute right-2 text-[18px] text-[#707972]">
+                      {sortMenuOpen ? "expand_less" : "expand_more"}
+                  </span>
+                  </button>
+                  {sortMenuOpen && (
+                    <div
+                      role="listbox"
+                      aria-label="Sort wishlist"
+                      className="absolute right-0 top-full mt-1.5 w-52 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#e5e7eb] bg-white p-1.5 shadow-xl"
+                    >
+                      {SORT_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          role="option"
+                          aria-selected={sortBy === option.id}
+                          onClick={() => {
+                            setSortBy(option.id);
+                            setSortMenuOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[12px] transition ${
+                            sortBy === option.id
+                              ? "bg-[#F7D61D]/25 font-semibold text-[#121c2a]"
+                              : "text-[#404943] hover:bg-gray-50"
+                          }`}
+                        >
+                          {option.label}
+                          {sortBy === option.id && (
+                            <span className="material-symbols-outlined text-[17px] text-[#967000]">
+                              check
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             {/* ================= Product Listing ================= */}
             <div key={`${activeFilter}-${sortBy}`} className="px-4 flex flex-col mt-1">
-              {!showEmpty &&
+              {!loadingFavorites && !favoritesError &&
                 filteredProducts.map((product, i) => (
                   <ProductCard
                     key={product.id}
@@ -403,10 +464,37 @@ const FavouriteScreen = () => {
                 ))}
             </div>
 
+            {loadingFavorites && (
+              <div className="flex items-center justify-center gap-2 px-4 py-12 text-[13px] text-[#707972]">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#F7D61D] border-t-transparent" />
+                Loading your favourites...
+              </div>
+            )}
+
+            {favoritesError && (
+              <div className="flex flex-col items-center px-4 py-12 text-center">
+                <p className="text-[14px] text-red-600" role="alert">{favoritesError}</p>
+                <button
+                  onClick={() => {
+                    if (!localStorage.getItem("token")) {
+                      setFavoritesError("Please log in to load your favourites.");
+                      return;
+                    }
+                    setLoadingFavorites(true);
+                    setFavoritesError("");
+                    setFavoritesReload((attempt) => attempt + 1);
+                  }}
+                  className="mt-4 rounded-xl bg-[#F7D61D] px-5 py-2 text-[13px] font-semibold text-black"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
             {/* ================= Empty State ================= */}
             {showEmpty && (
               <div className="flex flex-col items-center justify-center text-center px-4 py-12 fade-up">
-                <div className="w-24 h-24 rounded-full bg-[#F8CB46]/20 flex items-center justify-center text-[#D9A400] mb-4 shadow-inner floaty">
+                <div className="w-24 h-24 rounded-full bg-[#F7D61D]/20 flex items-center justify-center text-[#D9A400] mb-4 shadow-inner floaty">
                   <span className="material-symbols-outlined text-[44px]">
                     {products.length === 0 ? "favorite" : "search_off"}
                   </span>
@@ -422,7 +510,7 @@ const FavouriteScreen = () => {
                 {products.length === 0 ? (
                   <button
                     onClick={() => navigate("/home")}
-                    className="mt-5 px-6 py-2.5 rounded-xl bg-[#F8CB46] text-black text-[14px] leading-5 font-semibold shadow-sm active:scale-95 transition-transform"
+                    className="mt-5 px-6 py-2.5 rounded-xl bg-[#F7D61D] text-black text-[14px] leading-5 font-semibold shadow-sm active:scale-95 transition-transform"
                   >
                     Start Exploring
                   </button>
@@ -443,44 +531,28 @@ const FavouriteScreen = () => {
             {/* ================= Wishlist total + free delivery + Add all ================= */}
             {products.length > 0 && (
               <div className="px-4 mt-2 mb-3 fade-up" style={{ animationDelay: "150ms" }}>
-                <div className="w-full bg-white rounded-2xl p-3.5 shadow-sm border border-[#eff4ff]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 shrink-0 rounded-xl bg-[#F8CB46] flex items-center justify-center text-black shadow-sm">
-                      <span className="material-symbols-outlined text-[20px]">local_shipping</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] leading-4 font-semibold text-[#121c2a]">
-                        {wishlistTotal >= FREE_DELIVERY_AT
-                          ? "You've unlocked free delivery 🎉"
-                          : `Add ₹${FREE_DELIVERY_AT - wishlistTotal} more for free delivery`}
-                      </p>
-                      <p className="text-[11px] leading-4 text-[#404943]">
-                        Wishlist total: ₹{wishlistTotal}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="relative mt-3 h-2 w-full rounded-full bg-[#eff4ff] overflow-hidden">
-                    <div
-                      className="relative h-full rounded-full bg-[#F8CB46] overflow-hidden bar-shine transition-all duration-700 ease-out"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  <button
-                    onClick={handleAddAll}
-                    disabled={addingAll}
-                    className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#F8CB46] text-black text-[13px] font-bold tracking-wide active:scale-[0.98] transition-transform disabled:opacity-60"
-                  >
-                    {addingAll ? (
-                      <span className="w-4 h-4 rounded-full border-2 border-black/20 border-t-black animate-spin" />
-                    ) : (
-                      <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
-                    )}
-                    {addingAll ? "Adding..." : "ADD ALL TO CART"}
-                  </button>
-                </div>
+                <FreeDeliveryProgress
+                  total={wishlistTotal}
+                  itemsCount={filteredProducts.length}
+                />
+                <button
+                  onClick={handleAddAll}
+                  disabled={addingAll}
+                  className={`mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold tracking-wide active:scale-[0.98] transition-all disabled:opacity-60 ${
+                    addedAll
+                      ? "added-pop bg-[#0C831F] text-white hover:bg-[#259535]"
+                      : "bg-[#F7D61D] text-black hover:bg-[#E3C21A]"
+                  }`}
+                >
+                  {addingAll ? (
+                    <span className="w-4 h-4 rounded-full border-2 border-black/20 border-t-black animate-spin" />
+                  ) : (
+                    <span className="material-symbols-outlined text-[18px]">
+                      {addedAll ? "check" : "add_shopping_cart"}
+                    </span>
+                  )}
+                  {addingAll ? "Adding..." : addedAll ? "ADDED TO CART" : "ADD ALL TO CART"}
+                </button>
               </div>
             )}
           </div>
@@ -498,7 +570,7 @@ const FavouriteScreen = () => {
           >
             <span
               className={`material-symbols-outlined text-[18px] ${
-                toast.type === "error" ? "text-[#ff8a80]" : "text-[#F8CB46]"
+                toast.type === "error" ? "text-[#ff8a80]" : "text-[#F7D61D]"
               }`}
             >
               {toast.type === "error" ? "error" : "check_circle"}
@@ -507,7 +579,7 @@ const FavouriteScreen = () => {
             {toast.action && (
               <button
                 onClick={toast.action.onClick}
-                className="ml-1 px-2.5 py-1 rounded-full bg-white/10 text-[#F8CB46] font-bold hover:bg-white/20 active:scale-95 transition"
+                className="ml-1 px-2.5 py-1 rounded-full bg-white/10 text-[#F7D61D] font-bold hover:bg-white/20 active:scale-95 transition"
               >
                 {toast.action.label}
               </button>
@@ -546,9 +618,10 @@ const FavouriteScreen = () => {
                 </button>
                 <button
                   onClick={handleClearAll}
-                  className="flex-1 rounded-xl bg-red-500 py-2.5 text-[14px] font-semibold text-white shadow-sm transition-transform active:scale-95"
+                  disabled={clearingFavorites}
+                  className="flex-1 rounded-xl bg-red-500 py-2.5 text-[14px] font-semibold text-white shadow-sm transition-transform active:scale-95 disabled:opacity-60"
                 >
-                  Yes, Clear
+                  {clearingFavorites ? "Clearing..." : "Yes, Clear"}
                 </button>
               </div>
             </div>
@@ -573,7 +646,10 @@ const ProductCard = ({ product, index, onRemove, onAddToCart }) => {
   const handleRemoveClick = () => {
     if (removing) return;
     setRemoving(true);
-    setTimeout(onRemove, 300);
+    setTimeout(async () => {
+      const removed = await onRemove();
+      if (!removed) setRemoving(false);
+    }, 300);
   };
 
   const handleAdd = async () => {
@@ -611,7 +687,7 @@ const ProductCard = ({ product, index, onRemove, onAddToCart }) => {
                 loading="lazy"
               />
               {product.tag && (
-                <span className="absolute bottom-0 left-0 w-full truncate bg-[#F8CB46] px-0.5 py-0.5 text-center text-[8px] font-bold uppercase text-black">
+                <span className="absolute bottom-0 left-0 w-full truncate bg-[#F7D61D] px-0.5 py-0.5 text-center text-[8px] font-bold uppercase text-black">
                   {product.tag}
                 </span>
               )}
@@ -628,13 +704,15 @@ const ProductCard = ({ product, index, onRemove, onAddToCart }) => {
                 <span className="text-gray-300">•</span>
                 <span className="flex items-center gap-0.5 font-semibold text-[#121c2a]">
                   <span
-                    className="material-symbols-outlined text-[12px] text-[#F8CB46]"
+                    className="material-symbols-outlined text-[12px] text-[#F7D61D]"
                     style={{ fontVariationSettings: "'FILL' 1" }}
                   >
                     star
                   </span>
                   {product.rating}
-                  <span className="font-normal text-[#707972]">({product.reviews})</span>
+                  {product.reviews != null && (
+                    <span className="font-normal text-[#707972]">({product.reviews})</span>
+                  )}
                 </span>
               </div>
 
@@ -648,8 +726,8 @@ const ProductCard = ({ product, index, onRemove, onAddToCart }) => {
                   disabled={adding}
                   className={`flex min-w-[66px] items-center justify-center gap-1 rounded-lg border px-2.5 py-1 text-[10px] font-bold tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-70 ${
                     added
-                      ? "added-pop border-[#2E9E4F] bg-[#E8F5E9] text-[#2E7D32]"
-                      : "border-[#F8CB46] bg-[#F8CB46]/15 text-[#121c2a] hover:bg-[#F8CB46]/30"
+                      ? "added-pop border-[#259535] bg-[#EAF5EC] text-[#0C831F]"
+                      : "border-[#F7D61D] bg-[#F7D61D]/15 text-[#121c2a] hover:bg-[#F7D61D]/30"
                   }`}
                 >
                   {adding ? (

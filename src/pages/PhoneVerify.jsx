@@ -93,7 +93,7 @@ export default function PhoneVerify({
   return (
     <main
       ref={wrapRef}
-      className="w-full max-w-[390px] h-[844px] bg-white sm:rounded-[48px] shadow-2xl overflow-hidden flex flex-col justify-between relative border-0"
+      className="w-full max-w-[450px] h-[844px] bg-white sm:rounded-[48px] shadow-2xl overflow-hidden flex flex-col justify-between relative border-0"
     >
       {/* Status bar */}
      
@@ -132,7 +132,7 @@ export default function PhoneVerify({
           type="button"
           onClick={handleVerify}
           disabled={phone.length < maxLength}
-          className="action-btn w-full bg-brand-green text-black font-semibold py-3 rounded-lg shadow-sm tracking-wider text-sm text-center transition duration-150 ease-in-out hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="action-btn w-full bg-brand-yellow text-black font-semibold py-3 rounded-lg shadow-sm tracking-wider text-sm text-center transition duration-150 ease-in-out hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           VERIFY
         </button>

@@ -14,10 +14,10 @@ export default function SplashScreen() {
   }, [navigate]);
 
   return (
-    <div className="bg-[#FDD502] text-slate-900 flex justify-center items-center min-h-screen m-0 p-0 overflow-hidden font-sans select-none">
+    <div className="bg-[#F7D61D] text-slate-900 flex justify-center items-center min-h-screen m-0 p-0 overflow-hidden font-sans select-none">
       
       {/* Mobile Container */}
-      <main className="relative w-full max-w-[430px] h-full sm:h-[932px] max-h-screen bg-[#FDD502] flex flex-col justify-between items-center overflow-hidden ">
+      <main className="relative w-full max-w-[430px] h-full sm:h-[932px] max-h-screen bg-[#F7D61D] flex flex-col justify-between items-center overflow-hidden ">
         
         {/* Main Content */}
         <div className="w-full flex-1 flex flex-col justify-around items-center ">
