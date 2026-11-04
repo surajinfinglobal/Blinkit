@@ -190,7 +190,7 @@ router.patch(
        await order.save();
       if (["delivered", "cancelled"].includes(orderStatus) && order.assignedRider) {
         await Rider.findByIdAndUpdate(order.assignedRider, {
-          $set: { status: "available" },
+          $set: { status: "available", mission: null },
         });
       }
         const updatedOrder = await Order.findById(order._id)

@@ -1,5 +1,6 @@
 
 const Order = require("../models/Order");
+const Cart = require("../models/Cart");
 const { randomBytes } = require("node:crypto");
 
 exports.placeOrder = async (req, res) => {
@@ -129,6 +130,11 @@ exports.placeOrder = async (req, res) => {
         applied: Boolean(coupon?.applied),
       },
     });
+
+    await Cart.updateOne(
+      { userId: req.user._id },
+      { $set: { items: [] } }
+    );
 
     return res.status(201).json({
       success: true,
