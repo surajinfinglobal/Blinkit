@@ -6,6 +6,7 @@ const addressRoutes = require('./routes/address');
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const authRoutes = require(path.join(__dirname, 'routes', 'authRoutes'))
 const adminOrderRoutes = require("./routes/adminOrderRoutes");
+const favoriteRoutes = require('./routes/favorites');
 
 
 
@@ -29,6 +30,7 @@ app.use("/api", require("./routes/distance"));
 app.use("/api", require("./routes/orderRoutes"));
 app.use("/api/riders", require("./routes/riderRoutes"));
 app.use("/api/admin", adminOrderRoutes);
+app.use('/api', favoriteRoutes);
 
 app.use('/api/auth', authRoutes)
 async function startServer() {

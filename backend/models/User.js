@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema(
       default: null,
       select: false,
     },
+    // User schema mein
+    favorites: [{ type: String }],  // Array of product IDs
 
     addresses: [
       {
