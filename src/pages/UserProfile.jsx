@@ -51,8 +51,8 @@ const writeJSON = (key, value) => {
 const loadUser = () => {
   const u = readJSON('user', null);
   return {
-    name: u?.name || 'Ayush',
-    email: u?.email || 'ayush@gmail.com',
+    name: u?.name || 'Suraj',
+    email: u?.email || 'suraj@gmail.com',
     phone: u?.phone || '',
   };
 };
