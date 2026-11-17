@@ -1,11 +1,13 @@
 
+import { API_BASE_URL } from './apiConfig.js';
+
 export const addAddressAPI = async (addressData) => {
   const token = localStorage.getItem('token');
    if (!token) {
     throw new Error('Please login first. Authentication token nahi mila.');
   }
 
-  const response = await fetch('http://localhost:5000/api/addresses', {
+  const response = await fetch(`${API_BASE_URL}/addresses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -29,7 +31,7 @@ export const getAddressesAPI = async () => {
     throw new Error('Please login first');
   }
 
-  const response = await fetch('http://localhost:5000/api/addresses', {
+  const response = await fetch(`${API_BASE_URL}/addresses`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -50,7 +52,7 @@ export const deleteAddressAPI = async (addressId)=>{
   if (!token) {
     throw new Error('Please login first. Authentication token nahi mila.');
   }
-  const response = await fetch(`http://localhost:5000/api/addresses/${addressId}`, {
+  const response = await fetch(`${API_BASE_URL}/addresses/${addressId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

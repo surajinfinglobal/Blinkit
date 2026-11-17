@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from './apiConfig.js';
+
 export async function searchProducts(query) {
   const params = new URLSearchParams({
     q: query,
@@ -6,7 +7,7 @@ export async function searchProducts(query) {
   });
 
   const response = await fetch(
-    `${API_URL}/products/search?${params}`
+    `${API_BASE_URL}/products/search?${params}`
   );
   const data = await response.json();
 

@@ -1,3 +1,5 @@
+import { API_BASE_URL } from './apiConfig.js';
+
 export const getDistanceAPI = async ({
   startLat,
   startLng,
@@ -11,7 +13,7 @@ export const getDistanceAPI = async ({
     endLng,
   });
    const response = await fetch(
-    `http://localhost:5000/api/distance?${params.toString()}`
+    `${API_BASE_URL}/distance?${params.toString()}`
   );
 
   const data = await response.json();

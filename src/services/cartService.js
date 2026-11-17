@@ -1,6 +1,5 @@
 import { httpRequest } from './http';
-
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from './apiConfig.js';
 
 async function cartRequest(path, options = {}) {
   return httpRequest(`/cart${path}`, options);
@@ -28,7 +27,7 @@ export async function removeFromCart(productId) {
 export async function addToCart(product) {
   const token = localStorage.getItem('token');
 
-  const response = await fetch(`${API_URL}/cart`, {
+  const response = await fetch(`${API_BASE_URL}/cart`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from 'react-router-dom';
+import { API_BASE_URL } from '../services/apiConfig.js';
 
 const OTP_LENGTH = 4;
 
@@ -149,7 +150,7 @@ const OTPVerification = () => {
       setLoading(true);
       setError("");
 
-      const response = await fetch('http://localhost:5000/api/auth/verify-otp', { 
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

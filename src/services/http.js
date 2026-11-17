@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from './apiConfig.js';
 
 function handleUnauthorized() {
   // Clear token and redirect to login/phone
@@ -26,7 +26,7 @@ export async function httpRequest(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
   });
