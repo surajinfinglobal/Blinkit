@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
 import { addToCart } from "../services/cartService";
+import PulseSplash from '../components/PulseSplash.jsx';
+import Wishlist from '../assets/Blinkit_ Wishlist _Empty .png'
+
 import {
   clearFavoritesAPI,
   getFavoritesAPI,
@@ -465,10 +468,7 @@ const FavouriteScreen = () => {
             </div>
 
             {loadingFavorites && (
-              <div className="flex items-center justify-center gap-2 px-4 py-12 text-[13px] text-[#707972]">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#F7D61D] border-t-transparent" />
-                Loading your favourites...
-              </div>
+              <PulseSplash/>
             )}
 
             {favoritesError && (
@@ -493,38 +493,14 @@ const FavouriteScreen = () => {
 
             {/* ================= Empty State ================= */}
             {showEmpty && (
-              <div className="flex flex-col items-center justify-center text-center px-4 py-12 fade-up">
-                <div className="w-24 h-24 rounded-full bg-[#F7D61D]/20 flex items-center justify-center text-[#D9A400] mb-4 shadow-inner floaty">
-                  <span className="material-symbols-outlined text-[44px]">
-                    {products.length === 0 ? "favorite" : "search_off"}
-                  </span>
-                </div>
-                <h3 className="text-[18px] leading-6 font-semibold text-[#121c2a]">
-                  {products.length === 0 ? "Your wishlist is empty" : "No matching items"}
-                </h3>
-                <p className="text-[14px] leading-5 text-[#404943] max-w-xs mt-1">
-                  {products.length === 0
-                    ? "Explore our fresh organic harvest and tap the heart icon on items you love."
-                    : "Search ya filter badal ke dekho."}
-                </p>
-                {products.length === 0 ? (
-                  <button
-                    onClick={() => navigate("/home")}
-                    className="mt-5 px-6 py-2.5 rounded-xl bg-[#F7D61D] text-black text-[14px] leading-5 font-semibold shadow-sm active:scale-95 transition-transform"
-                  >
-                    Start Exploring
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setSearch("");
-                      setActiveFilter("all");
-                    }}
-                    className="mt-5 px-6 py-2.5 rounded-xl bg-white text-[#121c2a] text-[13px] font-semibold shadow-sm active:scale-95 transition-transform"
-                  >
-                    Reset filters
-                  </button>
-                )}
+             <div className="fade-up -mt-2 flex flex-col items-center justify-start rounded-2xl bg-[#F5F7FA] px-2 pb-24 pt-0 text-center" onClick={() => navigate('/home')}>
+                <img
+                  src={Wishlist}
+                  alt="Your wishlist is empty"
+                  className="h-auto w-full max-w-[420px] mix-blend-multiply"
+                />
+                  
+                
               </div>
             )}
 

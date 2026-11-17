@@ -2,8 +2,9 @@ const express= require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const path = require('path')
-const addressRoutes = require('./routes/address');
 require('dotenv').config({ path: path.join(__dirname, '.env') })
+const redisClient =  require('./config/redis.js');
+const addressRoutes = require('./routes/address');
 const authRoutes = require(path.join(__dirname, 'routes', 'authRoutes'))
 const adminOrderRoutes = require("./routes/adminOrderRoutes");
 const favoriteRoutes = require('./routes/favorites');
@@ -36,6 +37,8 @@ app.use('/api/auth', authRoutes)
 async function startServer() {
   try {
     await mongoose.connect(process.env.MONGO_URI)
+    await redisClient.connect();
+
 
     console.log('MongoDB connected successfully')
 

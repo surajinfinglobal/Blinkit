@@ -32,22 +32,38 @@ export default function useAdminData(notify) {
       try {
         const users = await getAllUsers();
         if (Array.isArray(users)) {
-          const mapped = users.map((u, idx) => ({
-            id: u._id || `U-${idx}`,
-            name: u.fullName || u.name || "Unknown",
-            gold: false,
-            since: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : "N/A",
-            phone: u.phone || "",
-            email: u.email || "",
-            hub: "Hub 04 (Indiranagar)",
-            address: u.addresses?.[0]?.line || "",
-            ordersNote: "0 lifetime orders",
-            orders: 0,
-            ltv: 0,
-            wallet: 0,
-            cohort: "new",
-            status: "active"
-          }));
+          const mapped = users.map((u, idx) => {
+            const primaryAddress = u.addresses?.[0];
+            const address =
+              primaryAddress?.line ||
+              [
+                primaryAddress?.houseNo,
+                primaryAddress?.floor,
+                primaryAddress?.area,
+                primaryAddress?.landmark,
+                primaryAddress?.city,
+                primaryAddress?.pincode,
+              ]
+                .filter(Boolean)
+                .join(", ");
+
+            return {
+              id: u._id || `U-${idx}`,
+              name: u.fullName || u.name || "Unknown",
+              gold: false,
+              since: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : "N/A",
+              phone: u.phone || "",
+              email: u.email || "",
+              hub: "Hub 04 (Indiranagar)",
+              address,
+              ordersNote: "0 lifetime orders",
+              orders: 0,
+              ltv: 0,
+              wallet: 0,
+              cohort: "new",
+              status: "active"
+            };
+          });
           setCustomers(mapped);
         }
       } catch (error) {

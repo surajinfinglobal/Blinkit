@@ -168,3 +168,46 @@ exports.getMyOrders = async (req, res) => {
     });
   }
 };
+
+exports.cancelorder = async (req, res)=>{
+  try {
+     const { orderId } = req.params;
+    let order = await Order.findOne({ orderId });
+
+    if (!order) {
+      order = await Order.findById(orderId).catch(() => null);
+    }
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Sirf ongoing orders cancel ho sakte hain
+    if (!['received', 'packing'].includes(order.orderStatus)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Order cancel nahi ho sakta — already out for delivery' 
+      });
+    }
+    if (order.userId && req.user && order.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Aap is order ko cancel nahi kar sakte" });
+    }
+    order.orderStatus = 'cancelled';
+    order.cancelledAt = new Date();
+     if (order.paymentMethod !== 'COD') {
+      order.refundStatus = 'processing';
+      order.refundAmount = order.billDetails.grandTotal;
+    }
+     await order.save();
+    res.json({
+       success: true,
+      message: "Order cancelled successfully",
+      refund: order.paymentMethod !== 'COD' 
+        ? { amount: order.billDetails.grandTotal, status: 'processing' }
+        : null,
+    });
+  } catch (err) {
+    console.error("Cancel order error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

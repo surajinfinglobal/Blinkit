@@ -97,7 +97,42 @@ export default function OrderSummaryReceipt() {
   const handleTrackOrder = () => {
     if (isTracking) return;
     setIsTracking(true);
-    navigate('/TrackOrder');
+    navigate('/TrackOrder', {
+      state: {
+        trackedOrder: trackedOrder || {
+          id: orderId,
+          status: currentStatusLabel,
+          rawStatus: liveOrderStatus,
+          total,
+          payment: payment?.methodLabel,
+          paymentStatus: payment?.status,
+          items: items.map((item) => ({
+            id: item.id || item.productId,
+            name: item.name,
+            unit: item.unit,
+            price: Number(item.basePrice ?? item.price ?? 0),
+            image: item.image || null,
+            qty: Number(item.qty || item.quantity || 1),
+          })),
+          subtotal,
+          handlingFee,
+          deliveryFee,
+          discount: savedAmount,
+          address: addressText,
+        },
+        payment,
+        items,
+        subtotal,
+        handlingFee,
+        deliveryFee,
+        savedAmount,
+        total,
+        address: routeState.address,
+        addressText,
+        orderId,
+        liveOrderStatus,
+      },
+    });
     setTimeout(() => setIsTracking(false), 1200);
   };
 

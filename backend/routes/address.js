@@ -9,15 +9,37 @@ router.post('/addresses', protect, async (req, res) => {
      console.log('📥 Received address:', req.body); 
   console.log('👤 User ID:', req.user?.id); 
      try {
-    const { houseNo, floor, area, landmark, city, pincode } = req.body;
+    const { houseNo, floor, area, landmark, city, pincode, lat, lng } = req.body;
     if (!area || !city || !pincode) {
       return res.status(400).json({ message: 'Area, city, pincode required' });
     }
+
+    const hasValidCoordinates =
+      typeof lat === 'number' &&
+      Number.isFinite(lat) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      typeof lng === 'number' &&
+      Number.isFinite(lng) &&
+      lng >= -180 &&
+      lng <= 180;
     
      // User ke document mein push karo
    const user = await User.findByIdAndUpdate(
       req.user.id,
-      { $push: { addresses: { houseNo, floor, area, landmark, city, pincode } } },
+      {
+        $push: {
+          addresses: {
+            houseNo,
+            floor,
+            area,
+            landmark,
+            city,
+            pincode,
+            ...(hasValidCoordinates ? { lat, lng } : {}),
+          },
+        },
+      },
       { returnDocument: 'after', runValidators: true }
     );
 

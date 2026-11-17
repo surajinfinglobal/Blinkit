@@ -195,7 +195,7 @@ const CartScreen = () => {
   const [eta] = useState(randomEta);
 
   const navWrapRef = useRef(null);
-  const [navH, setNavH] = useState(0);
+  // const [navH, setNavH] = useState(0);
   useLayoutEffect(() => {
     const el = navWrapRef.current?.firstElementChild;
     if (!el) return;

@@ -7,6 +7,7 @@ import { useToast } from "../components/Toast";
 export default function CustomersSection({ data, standalone }) {
   const notify = useToast();
   const { customers } = data;
+  console.log(data);
   const [cohort, setCohort] = useState("all");
   const [query, setQuery] = useState("");
 
@@ -49,7 +50,8 @@ export default function CustomersSection({ data, standalone }) {
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="bg-surface-container-low/70 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                {["Customer Profile", "Contact Details", "Primary Pod & Address", "Orders / LTV Spend", "Wallet Balance", "Status", "Actions"].map((h, i) => (
+              {/* "Wallet Balance", */}
+                {["Customer Profile", "Contact Details", "Primary Pod & Address", "Orders / LTV Spend",  "Status", "Actions"].map((h, i) => (
                   <th key={h} className={`px-space-md py-3.5 font-bold ${i === 6 ? "text-right" : ""}`}>{h}</th>
                 ))}
               </tr>
@@ -84,11 +86,11 @@ export default function CustomersSection({ data, standalone }) {
                       <div className="font-label-md text-label-md font-extrabold">{inr(c.ltv)}</div>
                       <div className={`font-label-sm text-label-sm ${flagged ? "text-error" : "text-on-surface-variant"}`}>{c.ordersNote}</div>
                     </td>
-                    <td className="whitespace-nowrap px-space-md py-4">
+                    {/* <td className="whitespace-nowrap px-space-md py-4">
                       <span className={`rounded-full px-2 py-0.5 font-label-md text-label-md font-bold ${c.wallet > 0 ? "bg-tertiary-container/30 text-tertiary" : c.wallet < 0 ? "bg-error-container/40 text-error" : "bg-surface-container-low text-on-surface-variant"}`}>
                         {c.wallet < 0 ? "-" : ""}{inr(Math.abs(c.wallet))}
                       </span>
-                    </td>
+                    </td> */}
                     <td className="whitespace-nowrap px-space-md py-4">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-label-sm text-label-sm font-bold ${flagged ? "bg-error-container text-on-error-container" : "bg-tertiary-container/30 text-on-tertiary-container"}`}>
                         {!flagged && <span className="h-1.5 w-1.5 rounded-full bg-tertiary" />}{flagged ? "Restricted COD" : "Active"}
