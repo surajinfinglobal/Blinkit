@@ -29,9 +29,8 @@ export default function CreateAccount({ onContinue, onGoogle, onFacebook, onLogi
       setLoading(true);
       
       const data = await registerUser({ phone: cleanPhone }); 
-      console.log('API Response:', data);
       navigate('/otp', {
-        state: { phone: cleanPhone },
+        state: { phone: cleanPhone, otp: data.otp },
       });
 
     } catch (err) {

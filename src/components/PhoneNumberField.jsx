@@ -20,7 +20,7 @@ export default function PhoneNumberField({ inputRef, phone, onPhoneChange, onFoc
           ref={inputRef}
           id="mobile-number"
           type="tel"
-          inputMode="none"
+          inputMode="numeric"
           placeholder="Enter Your Mobile Number"
           className="w-full border-0 bg-transparent p-0 text-[15px] text-neutral-800 outline-none placeholder:text-neutral-400 focus:ring-0"
           value={phone}

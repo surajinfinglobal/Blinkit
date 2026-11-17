@@ -25,7 +25,7 @@ const handleSignUp = () => {
           <div className="absolute inset-0 w-full h-full">
             <img
               alt="Blinkit Delivery Partner with Fresh Groceries and Smartphone"
-              className="w-full h-full object-cover object-top pointer-events-none select-none"
+              className="absolute inset-x-0 top-0 h-[130%] w-full object-fill object-top pointer-events-none select-none"
               src={heroImg}
             />
           </div>
