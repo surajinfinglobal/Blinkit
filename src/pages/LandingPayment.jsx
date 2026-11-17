@@ -10,38 +10,30 @@ export default function LandingPayment({ onFinish, onBack }) {
   }
 
   return (
-    <div
-      className="flex w-full items-center justify-center overflow-hidden bg-[#F5F7FA]"
-      style={{ minHeight: 'max(100vh, 884px)' }}
-    >
-      <main className="w-full max-w-[450px] h-[884px] bg-[#F5F7FA] sm:rounded-[48px] shadow-2xl relative flex flex-col justify-between overflow-hidden border border-slate-200/50 font-sans">
-     
-      {/* Illustration Section */}
-      <section className="relative w-full flex-1 flex items-center justify-center overflow-hidden">
-        {/* Container jiska background page ke background se match karta hai */}
-        <div className="w-full h-full max-w-[400px] max-h-[400px] relative flex items-center justify-center overflow-hidden bg-[#F5F7FA]">
+    <div className="flex h-[100dvh] min-h-[100svh] w-full items-center justify-center overflow-hidden bg-[#F5F7FA]">
+      <main className="relative flex h-full min-h-0 w-full max-w-[450px] flex-col justify-between overflow-hidden border border-slate-200/50 bg-[#F5F7FA] font-sans sm:rounded-[48px] sm:shadow-2xl">
+        <section className="relative flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden">
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#F5F7FA]">
           <img
             alt="Easy & Safe Payment"
-            /* object-cover aur mix-blend-multiply se image ka white background merge ho jayega */
-            className="w-full h-full object-cover mix-blend-darken pointer-events-none select-none"
+            className="h-full w-full object-contain mix-blend-multiply pointer-events-none select-none"
             src={paymentimg}
           />
         </div>
       </section>
 
       {/* Bottom content */}
-      <article className="bg-white rounded-t-[40px] px-8 pt-8 pb-5 flex flex-col items-center text-center shadow-[0_-12px_40px_rgba(0,0,0,0.03)] z-20 select-none">
-        <h1 className="text-[32px] font-extrabold text-slate-900 tracking-tight leading-tight mb-2">
+      <article className="onboarding-content z-20 flex h-[300px] shrink-0 flex-col items-center rounded-t-[40px] bg-white px-6 pt-5 pb-[max(1rem,env(safe-area-inset-bottom))] text-center shadow-[0_-12px_40px_rgba(0,0,0,0.03)] select-none sm:h-[340px] sm:px-8 sm:pt-8 sm:pb-5">
+        <h1 className="mb-1 flex h-14 w-full items-center justify-center text-[24px] font-extrabold leading-tight tracking-tight text-slate-900 sm:mb-2 sm:h-[4.5rem] sm:text-[32px]">
           Easy &amp; Safe Payment
         </h1>
-        <p className="text-[15px] font-medium text-slate-400 mb-8 max-w-[270px] leading-relaxed">
+        <p className="mb-2 flex h-[3.75rem] max-w-[300px] items-center justify-center text-[14px] font-medium leading-relaxed text-slate-400 sm:mb-5 sm:h-16 sm:text-[15px]">
           Experience seamless, secure checkout with multiple payment options
         </p>
 
-        {/* Dots — 3rd active */}
         <nav
           aria-label="Slide Pagination"
-          className="flex items-center justify-center space-x-2 mb-9"
+          className="mb-4 flex h-2 items-center justify-center space-x-2 sm:mb-5"
         >
           <span className="w-2 h-2 bg-[#DCE4EC] rounded-full inline-block" />
           <span className="w-2 h-2 bg-[#DCE4EC] rounded-full inline-block" />
@@ -51,17 +43,15 @@ export default function LandingPayment({ onFinish, onBack }) {
           />
         </nav>
 
-        {/* CTA */}
         <button
           type="button"
           onClick={handleFinish}
-          className="w-full py-4 bg-[#F7D61D] hover:bg-[#F7D61D] active:scale-[0.99] transition duration-150 rounded-full text-black text-[17px] font-bold shadow-sm flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-yellow-600/20"
+          className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#F7D61D] py-3 text-[17px] font-bold text-black shadow-sm transition duration-150 hover:bg-[#F7D61D] active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-yellow-600/20 sm:min-h-14"
         >
           Get Started
         </button>
 
-        {/* Home indicator */}
-        <div className="w-full flex justify-center pt-6 pb-2">
+        <div className="flex w-full justify-center pt-3 pb-0 sm:pt-4">
           <div className="w-32 h-[4.5px] bg-slate-900 rounded-full opacity-80" />
         </div>
       </article>

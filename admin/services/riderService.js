@@ -1,10 +1,9 @@
 import { getAdminAuthHeaders } from "./adminAuthService";
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "../../src/services/apiConfig.js";
 
 export async function fetchRiders() {
   try {
-    const res = await fetch(`${API_BASE}/riders`, {
+    const res = await fetch(`${API_BASE_URL}/riders`, {
       headers: getAdminAuthHeaders(),
     });
     const data = await res.json();

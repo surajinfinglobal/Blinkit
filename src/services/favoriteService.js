@@ -1,8 +1,8 @@
-// services/favoriteService.js
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from './apiConfig.js';
+
 export const addFavoriteAPI = async (productId) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/favorites/${productId}`, {
+    const res = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
     });
@@ -15,7 +15,7 @@ export const addFavoriteAPI = async (productId) => {
 
 export const removeFavoriteAPI = async (productId) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/favorites/${productId}`, {
+    const res = await fetch(`${API_BASE_URL}/favorites/${productId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
     });
@@ -28,7 +28,7 @@ export const removeFavoriteAPI = async (productId) => {
 
 export const getFavoritesAPI = async () => {
   const token = localStorage.getItem('token');
-  const res = await fetch(`${API_URL}/favorites`, {
+  const res = await fetch(`${API_BASE_URL}/favorites`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Favourites load nahi hue');
@@ -37,7 +37,7 @@ export const getFavoritesAPI = async () => {
 
 export const clearFavoritesAPI = async () => {
   const token = localStorage.getItem('token');
-  const res = await fetch(`${API_URL}/favorites`, {
+  const res = await fetch(`${API_BASE_URL}/favorites`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

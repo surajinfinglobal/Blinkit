@@ -1,9 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+import { API_BASE_URL } from './apiConfig.js';
 
 
 export async function registerUser(userData) {
     console.log(userData);
-  const response = await fetch(`${API_URL}/auth/send-otp`, {
+  const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -25,7 +25,7 @@ export async function getUserProfile() {
     throw new Error('Please log in to view your profile.')
   }
 
-  const response = await fetch(`${API_URL}/user/profile`, {
+  const response = await fetch(`${API_BASE_URL}/user/profile`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

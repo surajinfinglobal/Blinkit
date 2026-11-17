@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios'; // ya aap fetch use karein
+import { API_BASE_URL } from '../services/apiConfig.js';
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
@@ -18,7 +19,7 @@ export function CartProvider({ children }) {
       setLoading(false);
       return;
     }
-    axios.get('http://localhost:5000/api/cart', authConfig)
+    axios.get(`${API_BASE_URL}/cart`, authConfig)
       .then(res => setCartItems(res.data))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
@@ -46,7 +47,7 @@ export function CartProvider({ children }) {
 
     // DB Sync
     try {
-      const res = await axios.post('http://localhost:5000/api/cart/add', {
+      const res = await axios.post(`${API_BASE_URL}/cart/add`, {
         productId: product.id,
         name: product.name,
         image: product.image,
@@ -69,7 +70,7 @@ export function CartProvider({ children }) {
     }
 
     try {
-      const res = await axios.put('http://localhost:5000/api/cart/update', 
+      const res = await axios.put(`${API_BASE_URL}/cart/update`,
         { productId, qty: newQty }, authConfig);
       setCartItems(res.data);
     } catch (err) {
@@ -81,7 +82,7 @@ export function CartProvider({ children }) {
   const removeFromCart = async (productId) => {
     setCartItems(prev => prev.filter(i => i.productId !== productId));
     try {
-      const res = await axios.delete(`http://localhost:5000/api/cart/remove/${productId}`, authConfig);
+      const res = await axios.delete(`${API_BASE_URL}/cart/remove/${productId}`, authConfig);
       setCartItems(res.data);
     } catch (err) {
       console.error('Failed to remove item', err);

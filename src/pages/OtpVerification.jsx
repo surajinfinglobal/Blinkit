@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from 'react-router-dom';
+import { API_BASE_URL } from '../services/apiConfig.js';
 
 const OTP_LENGTH = 4;
 
@@ -32,6 +33,7 @@ const OTPVerification = () => {
   // 2. location hook initialize kiya taaki phone state mil sake
   const location = useLocation();
   const phone = location.state?.phone; 
+  const generatedOtp = location.state?.otp;
 
   /* ================= INPUT BOXES (sirf numbers) ================= */
 
@@ -149,7 +151,7 @@ const OTPVerification = () => {
       setLoading(true);
       setError("");
 
-      const response = await fetch('http://localhost:5000/api/auth/verify-otp', { 
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -272,7 +274,12 @@ const OTPVerification = () => {
               <p className="text-[15px] font-bold text-gray-900">
                 {phone ? `OTP sent to +91 ${phone}` : "OTP sent to your mobile number"}
               </p>
-              <p className="mt-1 text-[12px] text-gray-500">Enter the 4-digit code sent via SMS</p>
+              <p className="mt-1 text-[12px] text-gray-500">Enter the 4-digit code</p>
+              {typeof generatedOtp === 'string' && /^\d{4}$/.test(generatedOtp) && (
+                <p className="mt-1 text-[11px] text-gray-400">
+                  OTP: <span className="font-semibold tracking-wider">{generatedOtp}</span>
+                </p>
+              )}
             </div>
 
             {/* OTP Digits (number-only inputs) */}

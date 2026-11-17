@@ -172,7 +172,7 @@ async function handleSubmit(event) {
       {step === 'verify' && (
         <div className="backdrop-in fixed inset-0 z-50 overflow-y-auto bg-black/45 backdrop-blur-[2px]">
           <div className="sheet-up">
-            <div className="min-h-screen flex items-center justify-center p-0 sm:p-4 select-none font-sans antialiased">
+            <div className="flex min-h-[100dvh] items-center justify-center p-0 select-none font-sans antialiased sm:min-h-0 sm:p-4">
               <PhoneVerify
                 countryCode="+ 91"
                 maxLength={10}
@@ -180,13 +180,6 @@ async function handleSubmit(event) {
                 onPhoneChange={setPhone}
                 phoneInput={phoneInput}
                 phoneInputRef={inputRef}
-                onBack={() => {
-                  setStep('login');
-                }}
-                onVerify={(num) => {
-                  console.log('Send OTP to:', num);
-                  alert(`OTP sent to +91 ${num}`);
-                }}
               />
             </div>
           </div>
