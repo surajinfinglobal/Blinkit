@@ -101,14 +101,14 @@ async function handleSubmit(event) {
   return (
     <>
       <LoginStyles />
-      <div aria-hidden={step === 'verify'} className="min-h-screen flex items-center justify-center bg-gray-100 p-0 sm:p-4 select-none font-sans antialiased">
-        <main className="relative flex h-[100dvh] w-full max-w-[450px] flex-col justify-between overflow-hidden bg-white shadow-2xl sm:h-[844px] sm:max-h-[calc(100dvh-2rem)] sm:rounded-[48px]   screen-in">
-          <div className="flex flex-1 flex-col justify-between px-6 pb-4 pt-8">
+      <div aria-hidden={step === 'verify'} className="flex h-[100dvh] w-full items-center justify-center overflow-hidden bg-gray-100 p-0 select-none font-sans antialiased sm:p-4">
+        <main className="screen-in relative flex h-full min-h-0 w-full max-w-[450px] flex-col justify-between overflow-hidden bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[48px]">
+          <div className="flex min-h-0 flex-1 flex-col justify-between px-6 pb-2 pt-4 sm:px-6 sm:pb-4 sm:pt-8">
 
             {/* ================= Illustration + LOGIN badge ================= */}
-            <section className="flex flex-col items-center pt-2" aria-label="Brand Visual and Header">
-              <div className="hero-in relative flex h-auto w-auto items-center justify-center overflow-hidden rounded-3xl ">
-                <img src={login} alt="Login" className="w-full h-full object-cover" />
+            <section className="flex min-h-0 flex-1 flex-col items-center pt-2" aria-label="Brand Visual and Header">
+              <div className="hero-in relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-3xl">
+                <img src={login} alt="Login" className="max-h-full max-w-full object-contain" />
               </div>
 
               {/* <div className="mt-5 flex flex-col items-center">
@@ -124,7 +124,7 @@ async function handleSubmit(event) {
             </section>
 
             {/* ================= Form ================= */}
-            <section className="flex flex-col space-y-6 pb-4" aria-label="Sign-in Options">
+            <section className="flex shrink-0 flex-col space-y-4 pb-2 sm:space-y-6 sm:pb-4" aria-label="Sign-in Options">
               {step === 'login' && phoneInput}
 
               <div className="fade-up flex items-center gap-3" style={{ animationDelay: '550ms' }}>
