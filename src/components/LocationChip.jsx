@@ -253,6 +253,8 @@ export default function LocationChip({
             landmark: "",
             city: city || "Unknown",
             pincode: pincode || "000000",
+            lat: latitude,
+            lng: longitude,
           };
           console.log("📤 Saving current location to API:", addressPayload);
           const resp = await addAddressAPI(addressPayload);
@@ -264,6 +266,8 @@ export default function LocationChip({
               label: saved.label || "Current",
               line: saved.line || line,
               pincode: saved.pincode || pincode,
+              lat: saved.lat ?? latitude,
+              lng: saved.lng ?? longitude,
             };
             setAddresses((prev) => [addr, ...prev.filter((a) => a.id !== "current" && a.id !== saved._id)]);
             setSelectedId(addr.id);
@@ -327,13 +331,38 @@ export default function LocationChip({
           label: addr.label || addr.type || "Home",
           line,
           pincode,
+          lat:
+            addr.lat !== null &&
+            addr.lat !== undefined &&
+            Number.isFinite(Number(addr.lat))
+              ? Number(addr.lat)
+              : undefined,
+          lng:
+            addr.lng !== null &&
+            addr.lng !== undefined &&
+            Number.isFinite(Number(addr.lng))
+              ? Number(addr.lng)
+              : undefined,
         };
       });
 
       const savedSelection = getSelectedAddress();
-      const nextAddresses = savedSelection && !formatted.some((address) => address.id === savedSelection.id)
-        ? [savedSelection, ...formatted]
-        : formatted;
+      const selectedAddressExists = formatted.some(
+        (address) => address.id === savedSelection?.id
+      );
+      const nextAddresses = selectedAddressExists
+        ? formatted.map((address) =>
+            address.id === savedSelection.id
+              ? {
+                  ...address,
+                  lat: savedSelection.lat ?? address.lat,
+                  lng: savedSelection.lng ?? address.lng,
+                }
+              : address
+          )
+        : savedSelection
+          ? [savedSelection, ...formatted]
+          : formatted;
 
       // Selected address ko valid rakho
       setAddresses(nextAddresses);
@@ -407,6 +436,8 @@ export default function LocationChip({
         label: newLabel,
         line,
         pincode: form.pincode,
+        lat: saved?.lat ?? currentLocation?.lat,
+        lng: saved?.lng ?? currentLocation?.lng,
       };
 
       setAddresses((prev) => [...prev, addr]);

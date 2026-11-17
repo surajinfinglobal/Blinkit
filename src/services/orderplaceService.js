@@ -44,3 +44,21 @@ export const getMyOrdersAPI = async () => {
 
   return data.orders;
 };
+
+
+export const cancelOrderAPI = async (orderId) => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`http://localhost:5000/api/orders/${orderId}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Order cancel nahi hua');
+  }
+  return data;
+};

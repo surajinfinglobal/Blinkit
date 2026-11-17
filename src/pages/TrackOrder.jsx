@@ -1,317 +1,566 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getMyOrdersAPI } from '../services/orderplaceService.js';
+
+const STATUS_LABELS = {
+  received: 'Order received',
+  packing: 'Packing your order',
+  packed: 'Order packed',
+  picked_up: 'Picked up',
+  out_for_delivery: 'Out for delivery',
+  delivered: 'Delivered',
+  cancelled: 'Order cancelled',
+};
+
+const ORDER_STEPS = [
+  { status: 'received', label: 'Placed', icon: 'shopping_bag' },
+  { status: 'packing', label: 'Packing', icon: 'inventory_2' },
+  { status: 'out_for_delivery', label: 'On the way', icon: 'delivery_dining' },
+  { status: 'delivered', label: 'Delivered', icon: 'home' },
+];
+
+const STATUS_PROGRESS = {
+  received: 0,
+  packing: 1,
+  packed: 1,
+  picked_up: 2,
+  out_for_delivery: 2,
+  delivered: 3,
+};
+
+const normalizeOrder = (source = {}) => {
+  const bill = source.billDetails || {};
+  const address = source.deliveryAddress || source.address;
+  const rider = source.assignedRider || source.rider || null;
+
+  return {
+    id: source.orderId || source.id || source._id || '',
+    status: source.orderStatus || source.rawStatus || 'received',
+    placedAt: source.createdAt || source.placedAt || null,
+    items: Array.isArray(source.items)
+      ? source.items.map((item, index) => ({
+          id: item.productId || item.id || item._id || `${item.name || 'item'}-${index}`,
+          name: item.name || 'Item',
+          unit: item.unit || '',
+          image: item.image || '',
+          price: Number(item.price ?? item.basePrice ?? 0),
+          quantity: Number(item.quantity ?? item.qty ?? 1),
+        }))
+      : [],
+    address:
+      typeof address === 'string'
+        ? address
+        : [address?.label, address?.line].filter(Boolean).join(' · '),
+    paymentMethod: source.paymentMethod || source.payment || '',
+    paymentStatus: source.paymentStatus || '',
+    currency: source.currency || 'INR',
+    subtotal: Number(bill.itemTotal ?? source.subtotal ?? 0),
+    handlingFee: Number(bill.handlingFee ?? source.handlingFee ?? 0),
+    deliveryFee: Number(bill.deliveryFee ?? source.deliveryFee ?? 0),
+    discount: Number(bill.discount ?? source.discount ?? 0),
+    total: Number(bill.grandTotal ?? source.total ?? 0),
+    eta: source.estimatedDeliveryAt || source.eta || null,
+    rider: rider && typeof rider === 'object' ? rider : null,
+  };
+};
+
+const formatMoney = (value, currency) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: currency || 'INR',
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
+
+const formatDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const formatEta = (value) => {
+  if (!value) return 'Delivery estimate unavailable';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Delivery estimate unavailable';
+  return `Est. ${date.toLocaleTimeString('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+};
 
 export default function OrderTracking() {
   const navigate = useNavigate();
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const location = useLocation();
+  const routeState = location.state || {};
+  const trackedOrder = routeState.trackedOrder || {};
+  const orderId =
+    trackedOrder.id ||
+    trackedOrder.orderId ||
+    trackedOrder._id ||
+    routeState.orderId ||
+    routeState.payment?.orderId ||
+    '';
+  const initialOrder = trackedOrder.id || trackedOrder.orderId || trackedOrder._id
+    ? trackedOrder
+    : {
+        ...routeState,
+        id: orderId,
+        address: routeState.addressText || routeState.address,
+        paymentMethod: routeState.payment?.methodLabel,
+        paymentStatus: routeState.payment?.status,
+      };
 
-  // 1. Material Symbols Font Load karo
+  const [order, setOrder] = useState(() => normalizeOrder(initialOrder));
+  const [refreshError, setRefreshError] = useState('');
+
   useEffect(() => {
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block';
+    link.href =
+      'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
-    return () => {
-      document.head.removeChild(link);
-    };
+    return () => document.head.removeChild(link);
   }, []);
 
-  // Auto-show the delight ping after 3.5 seconds
   useEffect(() => {
-    const timer = setTimeout(() => {
-      showToast('Rahul took the green corridor: 2 minutes faster! ⚡');
-    }, 3500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!orderId) {
+      navigate('/MyOrders', { replace: true });
+      return undefined;
+    }
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setToastVisible(true);
-    
-    setTimeout(() => {
-      setToastVisible(false);
-    }, 4000);
-  };
+    let active = true;
+    const refreshOrder = async () => {
+      try {
+        const orders = await getMyOrdersAPI();
+        const latestOrder = orders.find(
+          (item) => item.orderId === orderId || item._id === orderId
+        );
 
-  const handleCall = () => showToast('Calling Rahul Verma via secure masked relay...');
-  const handleChat = () => showToast('Opening quick chat with Rahul...');
-  const handleBack = () => navigate(-1);
+        if (!latestOrder) {
+          throw new Error('Order details could not be found.');
+        }
+
+        if (active) {
+          setOrder(normalizeOrder(latestOrder));
+          setRefreshError('');
+        }
+      } catch (error) {
+        if (active) {
+          setRefreshError(error.message || 'Order details could not be refreshed.');
+        }
+      }
+    };
+
+    refreshOrder();
+    const isComplete = ['delivered', 'cancelled'].includes(order.status);
+    const interval = isComplete ? null : setInterval(refreshOrder, 15000);
+
+    return () => {
+      active = false;
+      if (interval) clearInterval(interval);
+    };
+  }, [navigate, orderId, order.status]);
+
+  const statusLabel = STATUS_LABELS[order.status] || 'Order status unavailable';
+  const currentStep = STATUS_PROGRESS[order.status] ?? -1;
+  const progress = currentStep < 0 ? 0 : (currentStep / (ORDER_STEPS.length - 1)) * 100;
+  const isCancelled = order.status === 'cancelled';
+  const isDelivered = order.status === 'delivered';
+  const isEnRoute = ['picked_up', 'out_for_delivery'].includes(order.status);
+  const paymentLabel =
+    order.paymentMethod === 'COD'
+      ? 'Cash on Delivery'
+      : order.paymentMethod || 'Payment method unavailable';
+  const riderPhone =
+    typeof order.rider?.phone === 'string' ? order.rider.phone.replace(/[^\d+]/g, '') : '';
+  const riderDescription = [order.rider?.vehicle, order.rider?.hub].filter(Boolean).join(' · ');
 
   return (
-    <div className="bg-[#F5F7FA] font-sans text-[14px] leading-[20px] text-[#121c2a] flex flex-col min-h-screen relative overflow-hidden">
-      
-      {/* ================= FIXED HEADER ================= */}
-      <header className="fixed top-0 w-full z-50 pt-safe bg-[#F5F7FA]/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="h-16 px-3 sm:px-4 flex items-center justify-between">
-          
-          <div className="flex items-center gap-1 min-w-0 flex-1">
-            <button 
-              onClick={handleBack}
-              aria-label="Go Back" 
-              className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full text-[#121c2a] hover:text-[#F7D61D] transition-colors"
-            >
-              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
-            </button>
-            <div className="flex flex-col min-w-0">
-              <h1 className="text-[16px] sm:text-[18px] leading-tight font-semibold text-[#121c2a] truncate">On The Way</h1>
-              <span className="text-[10px] leading-[14px] tracking-[0.04em] font-medium text-[#404943] truncate">Order #GR-89421</span>
-            </div>
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#F5F7FA] font-sans text-[14px] leading-[20px] text-[#121c2a]">
+      <header className="fixed top-0 z-50 w-full bg-[#F5F7FA]/80 pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+        <div className="flex h-16 items-center px-3 sm:px-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#121c2a] transition-colors hover:text-[#0C831F]"
+          >
+            <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+          </button>
+          <div className="ml-1 flex min-w-0 flex-col">
+            <h1 className="truncate text-[16px] font-semibold leading-tight sm:text-[18px]">
+              {statusLabel}
+            </h1>
+            <span className="truncate text-[10px] font-medium tracking-[0.04em] text-[#404943]">
+              Order #{order.id}
+            </span>
           </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <button 
-              aria-label="Call Support" 
-              className="w-15 h-15 flex items-center justify-center rounded-full text-[#404943] hover:text-[#F7D61D] transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px]">support_agent</span>
-            </button>
-            {/* <div className="w-8 h-8 shrink-0 rounded-full bg-[#F7D61D] flex items-center justify-center">
-              <span className="material-symbols-outlined text-black text-[18px]">person</span>
-            </div> */}
-          </div>
-
         </div>
       </header>
 
-      {/* ================= MAIN CONTENT ================= */}
-      <main className="flex flex-col relative w-full pt-20 pb-safe bg-[#F5F7FA] min-h-screen">
-        <div className="flex flex-col w-full px-4 pb-8 space-y-4">
-          
-          {/* ETA & Live Banner Card */}
-          <div className="w-full bg-white rounded-xl p-4 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-1 gap-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#F7D61D] text-black rounded-full shrink-0">
-                <span className="w-2 h-2 shrink-0 rounded-full bg-[#F7D61D] animate-ping"></span>
-                <span className="text-[12px] leading-[16px] tracking-[0.02em] font-semibold truncate">On the Way</span>
-              </div>
-              <div className="flex items-center gap-1 text-[#404943] shrink-0">
-                <span className="material-symbols-outlined text-[16px]">schedule</span>
-                <span className="text-[12px] leading-[16px] tracking-[0.02em] font-semibold">Est. 4:25 PM</span>
-              </div>
-            </div>
-            <div className="mt-1">
-              <h2 className="text-[24px] sm:text-[28px] leading-[32px] sm:leading-[34px] tracking-[-0.015em] font-bold text-[#121c2a]">Arriving in 7–10 mins</h2>
-              <p className="text-[12px] leading-[16px] text-[#404943] mt-0.5">Your eco-friendly courier is cruising towards your gate</p>
-            </div>
-            
-            {/* Live Stepper Flow */}
-            <div className="mt-4 pt-2">
-              <div className="grid grid-cols-4 relative">
-                <div className="absolute top-3 left-0 right-0 h-1 bg-[#d9e3f6] z-0 rounded-full">
-                  <div className="h-full bg-[#F7D61D] rounded-full transition-all duration-700" style={{ width: '72%' }}></div>
-                </div>
-                {/* Step 1 */}
-                <div className="flex flex-col items-center relative z-10 text-center">
-                  <div className="w-6 h-6 shrink-0 rounded-full bg-[#F7D61D] text-black flex items-center justify-center shadow-sm">
-                    <span className="material-symbols-outlined text-[14px]">check</span>
-                  </div>
-                  <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#F7D61D] font-semibold mt-1 truncate w-full">Placed</span>
-                </div>
-                {/* Step 2 */}
-                <div className="flex flex-col items-center relative z-10 text-center">
-                  <div className="w-6 h-6 shrink-0 rounded-full bg-[#F7D61D] text-black flex items-center justify-center shadow-sm">
-                    <span className="material-symbols-outlined text-[14px]">check</span>
-                  </div>
-                  <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#F7D61D] font-semibold mt-1 truncate w-full">Packed</span>
-                </div>
-                {/* Step 3 (Active) */}
-                <div className="flex flex-col items-center relative z-10 text-center">
-                  <div className="w-6 h-6 shrink-0 rounded-full bg-[#F7D61D] text-black flex items-center justify-center ring-4 ring-[#F7D61D]">
-                    <span className="material-symbols-outlined text-[14px] animate-spin">cyclone</span>
-                  </div>
-                  <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#F7D61D] font-bold mt-1 truncate w-full">Out Now</span>
-                </div>
-                {/* Step 4 */}
-                <div className="flex flex-col items-center relative z-10 text-center">
-                  <div className="w-6 h-6 shrink-0 rounded-full bg-[#d9e3f6] text-[#404943] flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[14px]">home</span>
-                  </div>
-                  <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#404943] mt-1 truncate w-full">Doorstep</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <main className="relative flex min-h-screen w-full flex-col bg-[#F5F7FA] pb-safe pt-20">
+        <div className="flex w-full flex-col space-y-4 px-4 pb-8">
+          {refreshError && (
+            <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
+              {refreshError} Showing the order details available on this page.
+            </p>
+          )}
 
-          {/* Live Simulated Map */}
-          <div className="w-full bg-white rounded-xl overflow-hidden shadow-sm flex flex-col">
-            <div className="relative w-full h-56 bg-[#dee9fc] overflow-hidden flex items-center justify-center">
-              <svg className="absolute inset-0 w-full h-full opacity-35" xmlns="http://www.w3.org/2000/svg">
-                <pattern height="40" id="grid" patternUnits="userSpaceOnUse" width="40">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" opacity="0.15" stroke="#F7D61D" strokeWidth="0.8"></path>
-                </pattern>
-                <rect fill="url(#grid)" height="100%" width="100%"></rect>
-                <path d="M 30,170 C 100,160 140,80 230,90 S 340,40 370,30" fill="none" stroke="#F7D61D" strokeDasharray="6,6" strokeLinecap="round" strokeWidth="4"></path>
-              </svg>
-              
-              <div className="absolute bottom-5 left-5 bg-white text-[#121c2a] shadow-md rounded-full px-2.5 py-1 flex items-center gap-1 z-10">
-                <span className="w-2 h-2 shrink-0 rounded-full bg-[#F7D61D]"></span>
-                <span className="text-[10px] leading-[14px] tracking-[0.04em] font-semibold">Store Hub</span>
-              </div>
-
-              <div className="relative z-10 flex flex-col items-center drop-shadow-md">
-                <img 
-                  className="w-40 sm:w-48 h-auto object-contain" 
-                  src="https://lh3.googleusercontent.com/aida/AEtjO1UPNEtn4aTfhrkE2bl8HH1Q6FLZhRx7val3GK_QAjhNK0cg5ttdP6zJHpMvwloBPyHFNEZj974yRPQFp_0-Aff6S7-meYOnSJ095-qRl3v3MthtmUZXjvirfLTUHKGudBQLw6SeEfN8ks2i6vG3XL_mjmuEnAqFpMPU4BYZtpyIzz7x7DpU5MjBqBWF1wCugsL9bt0TlFiwb26aU7i-ixu75hYwpB5r7wirRESadUxfZuem4zw_tZqxeZU" 
-                  alt="Courier on scooter" 
+          <section className="relative w-full overflow-hidden rounded-xl bg-white p-4 shadow-sm">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 ${
+                  isCancelled ? 'bg-red-100 text-red-800' : 'bg-[#EAF5EC] text-[#0C831F]'
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full ${
+                    isCancelled ? 'bg-red-600' : 'bg-[#0C831F]'
+                  }`}
                 />
+                <span className="truncate text-[12px] font-semibold">{statusLabel}</span>
               </div>
+              <span className="shrink-0 text-[12px] font-semibold text-[#404943]">
+                {formatEta(order.eta)}
+              </span>
+            </div>
 
-              <div className="absolute top-4 right-5 bg-[#F7D61D] text-black shadow-md rounded-full px-3 py-1 flex items-center gap-1.5 z-10">
-                <span className="material-symbols-outlined text-[14px]">pin_drop</span>
-                <span className="text-[10px] leading-[14px] tracking-[0.04em] font-semibold">Home</span>
+            <div className="mt-2">
+              <h2 className="text-[22px] font-bold leading-7 tracking-[-0.015em] sm:text-[26px]">
+                {isCancelled
+                  ? 'This order was cancelled'
+                  : isDelivered
+                    ? 'Your order has arrived'
+                    : statusLabel}
+              </h2>
+              <p className="mt-1 text-[12px] text-[#404943]">
+                {order.placedAt
+                  ? `Placed ${formatDateTime(order.placedAt)}`
+                  : 'Order placement time unavailable'}
+              </p>
+            </div>
+
+            <div className="mt-5 pt-1">
+              <div className="relative grid grid-cols-4">
+                <div className="absolute left-0 right-0 top-3 z-0 h-1 rounded-full bg-[#e5e7eb]">
+                  <div
+                    className="h-full rounded-full bg-[#0C831F] transition-all duration-700"
+                    style={{ width: `${isCancelled ? 0 : progress}%` }}
+                  />
+                </div>
+                {ORDER_STEPS.map((step, index) => {
+                  const completed = !isCancelled && currentStep >= index;
+                  const active = !isCancelled && currentStep === index;
+                  return (
+                    <div key={step.status} className="relative z-10 flex flex-col items-center text-center">
+                      <div
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                          completed
+                            ? 'bg-[#0C831F] text-white'
+                            : 'bg-[#e5e7eb] text-[#404943]'
+                        } ${active ? 'ring-4 ring-[#0C831F]/15' : ''}`}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {completed && index < currentStep ? 'check' : step.icon}
+                        </span>
+                      </div>
+                      <span
+                        className={`mt-1 w-full truncate text-[10px] leading-[14px] ${
+                          completed ? 'font-semibold text-[#0C831F]' : 'text-[#404943]'
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
+            </div>
+          </section>
 
-              <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1 z-10">
-                <span className="material-symbols-outlined text-[14px] text-[#F7D61D]">near_me</span>
-                <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#121c2a] font-medium truncate">1.2 km away</span>
+          <section className="w-full overflow-hidden rounded-xl bg-white shadow-sm">
+            <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
+              <div>
+                <h2 className="text-[14px] font-semibold">Delivery route</h2>
+                <p className="text-[11px] text-[#6b7280]">Illustrative route simulation</p>
+              </div>
+              <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#EAF5EC] px-2.5 py-1 text-[10px] font-semibold text-[#0C831F]">
+                <span className={`h-2 w-2 rounded-full ${isEnRoute ? 'animate-pulse bg-[#0C831F]' : 'bg-[#9ca3af]'}`} />
+                {isCancelled ? 'Cancelled' : isDelivered ? 'Delivered' : isEnRoute ? 'On the way' : 'At store'}
+              </span>
+            </div>
+
+            <div className="relative mx-3 mb-3 overflow-hidden rounded-xl bg-[#eef4e8]">
+              <svg
+                viewBox="0 0 360 200"
+                role="img"
+                aria-label={`Illustrative delivery route from store to ${order.address || 'your delivery location'}`}
+                className="block h-52 w-full sm:h-60"
+                preserveAspectRatio="xMidYMid meet"
+              >
+                <defs>
+                  <pattern id="track-map-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+                    <path d="M24 0H0V24" fill="none" stroke="#d8e2d0" strokeWidth="1" />
+                  </pattern>
+                  <filter id="track-map-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity=".18" />
+                  </filter>
+                </defs>
+                <rect width="360" height="200" fill="url(#track-map-grid)" />
+                <path
+                  d="M-10 42 C70 58 86 5 148 24 S236 76 370 34 M-20 174 C44 136 100 186 157 150 S250 118 380 160 M88 -10 C96 44 57 90 86 132 S125 190 118 220 M260 -10 C230 50 292 72 260 111 S226 164 247 215"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M42 154 C86 154 94 122 135 126 S190 152 215 111 S264 92 311 48"
+                  fill="none"
+                  stroke="#d1d9ca"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M42 154 C86 154 94 122 135 126 S190 152 215 111 S264 92 311 48"
+                  fill="none"
+                  stroke="#0C831F"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray="2 10"
+                  className={isEnRoute ? 'track-route-active' : ''}
+                />
+
+                <g transform="translate(42 154)" filter="url(#track-map-shadow)">
+                  <circle r="13" fill="#fff" />
+                  <circle r="9" fill="#0C831F" />
+                  <text x="0" y="4" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="700">S</text>
+                </g>
+                <g transform="translate(311 48)" filter="url(#track-map-shadow)">
+                  <circle r="14" fill={isDelivered ? '#0C831F' : '#F7D61D'} />
+                  <path d="M-5 1 0-5 5 1V6H-5Z" fill="#1a1c1b" />
+                </g>
+
+                {order.rider && !isCancelled && !isDelivered && (
+                  <g
+                    transform={isEnRoute ? undefined : 'translate(42 154)'}
+                    filter="url(#track-map-shadow)"
+                    aria-label={`${order.rider.name || 'Delivery partner'} simulated map marker`}
+                  >
+                    {isEnRoute && (
+                      <animateMotion
+                        dur="14s"
+                        repeatCount="indefinite"
+                        rotate="auto"
+                        path="M42 154 C86 154 94 122 135 126 S190 152 215 111 S264 92 311 48"
+                      />
+                    )}
+                    <circle r="15" fill="#F7D61D" stroke="#fff" strokeWidth="3" />
+                    <text
+                      className="material-symbols-outlined"
+                      x="0"
+                      y="5"
+                      textAnchor="middle"
+                      fill="#1a1c1b"
+                      fontSize="17"
+                    >
+                      two_wheeler
+                    </text>
+                  </g>
+                )}
+              </svg>
+
+              <div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-[#121c2a] shadow-sm">
+                Store
+              </div>
+              <div className="absolute right-3 top-3 max-w-[55%] truncate rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-[#121c2a] shadow-sm">
+                {order.address || 'Delivery address'}
               </div>
             </div>
 
-            {/* Fresh Safety Micro-Banner */}
-            <div className="bg-[#F7D61D] px-4 py-2 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="material-symbols-outlined text-[#F7D61D] text-[16px] shrink-0">verified_user</span>
-                <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#F7D61D] font-semibold truncate">100% Contactless & Temp Verified</span>
-              </div>
-              <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#F7D61D] font-bold shrink-0">98.4°F</span>
+            <div className="flex items-center gap-2 px-4 pb-4 text-[11px] text-[#6b7280]">
+              <span className="material-symbols-outlined text-[15px]">info</span>
+              <span>
+                {isCancelled
+                  ? 'This order is cancelled.'
+                  : isDelivered
+                    ? 'This route preview is complete.'
+                    : isEnRoute && order.rider
+                      ? 'The rider marker is animated for preview and does not show live GPS.'
+                      : order.rider
+                        ? 'The rider stays at the store until the order is out for delivery.'
+                        : 'A rider will appear here after one is assigned to the order.'}
+              </span>
             </div>
-          </div>
+          </section>
 
-          {/* Rider Profile Card */}
-          <div className="w-full bg-white rounded-xl p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-[#e6eeff] flex items-center justify-center overflow-hidden">
-                    <img 
-                      className="w-full h-full object-cover" 
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMSWg5X9I0lVn9-RFFzjSyLIuu_Imml3Fd-GCdJMpg86du4VGifMfh1XlDuEdeQ4JSPfbLpQLKcov18tA08m1w4_-5_As5hFrqV44z4YnTLq6he4QjpfjE06ACCRQOWjPSdpDFyGQFF9_UIxo6PpGlRv8OPvgVT88y7k6pfMwYlm1mU02KVe9F2jtzTJLzBdqsMUbTYzBXng_rODjQMlk9i8RxsCN7_H0iwM37znGLQxVqgZh_X5vO" 
-                      alt="Rahul Verma" 
-                    />
+          <section className="flex min-h-32 w-full items-center gap-3 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EAF5EC] text-[#0C831F]">
+              <span className="material-symbols-outlined text-[22px]">location_on</span>
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-[13px] font-semibold">Delivery location</h2>
+              <p className="mt-1 break-words text-[12px] text-[#404943]">
+                {order.address || 'Delivery address unavailable'}
+              </p>
+              <p className="mt-2 text-[11px] text-[#6b7280]">
+                Live rider location is not available for this order.
+              </p>
+            </div>
+          </section>
+
+          <section className="w-full rounded-xl bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-[14px] font-semibold">Delivery partner</h2>
+              {order.rider?.status && (
+                <span className="rounded-full bg-[#EAF5EC] px-2.5 py-1 text-[10px] font-semibold capitalize text-[#0C831F]">
+                  {order.rider.status}
+                </span>
+              )}
+            </div>
+            {order.rider ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EAF5EC] text-[#0C831F]">
+                    <span className="material-symbols-outlined text-[24px]">delivery_dining</span>
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 shrink-0 rounded-full bg-[#F7D61D] flex items-center justify-center text-black">
-                    <span className="material-symbols-outlined text-[10px]">electric_scooter</span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-semibold">
+                      {order.rider.name || 'Delivery partner'}
+                    </p>
+                    <p className="truncate text-[12px] text-[#404943]">
+                      {riderDescription || 'Delivery partner'}
+                    </p>
                   </div>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <h3 className="text-[16px] sm:text-[18px] leading-[24px] font-semibold text-[#121c2a] truncate">Rahul Verma</h3>
-                    <span className="material-symbols-outlined text-[#F7D61D] text-[16px] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                {riderPhone && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <a
+                      href={`tel:${riderPhone}`}
+                      aria-label="Call delivery partner"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F7D61D] text-black"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">call</span>
+                    </a>
+                    <a
+                      href={`sms:${riderPhone}`}
+                      aria-label="Message delivery partner"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8e8e6] text-[#121c2a]"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">chat</span>
+                    </a>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#404943]">
-                    <span className="material-symbols-outlined text-[#ffb95f] text-[14px] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                    <span className="text-[12px] leading-[16px] tracking-[0.02em] font-semibold text-[#121c2a]">4.9</span>
-                    <span className="text-[12px] leading-[16px] truncate">• 1,240 trips</span>
-                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-[12px] text-[#404943]">
+                A delivery partner has not been assigned yet.
+              </p>
+            )}
+          </section>
+
+          <section className="w-full space-y-4 rounded-xl bg-white p-4 shadow-sm">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="text-[14px] font-semibold">Order items ({order.items.length})</h2>
+                <span className="text-[11px] text-[#404943]">
+                  {order.items.reduce((count, item) => count + item.quantity, 0)} items
+                </span>
+              </div>
+              {order.items.length ? (
+                <div className="space-y-2">
+                  {order.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-[#F5F7FA] p-2"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#EAF5EC] text-[#0C831F]">
+                            <span className="material-symbols-outlined text-[20px]">nutrition</span>
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-[12px] font-medium">{item.name}</p>
+                          <p className="truncate text-[10px] text-[#404943]">
+                            Qty: {item.quantity}{item.unit ? ` · ${item.unit}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-[12px] font-semibold">
+                        {formatMoney(item.price * item.quantity, order.currency)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-2 shrink-0">
-                <button onClick={handleCall} aria-label="Call" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#F7D61D] text-black flex items-center justify-center shadow-sm active:scale-95 transition-transform">
-                  <span className="material-symbols-outlined text-[20px]">call</span>
-                </button>
-                <button onClick={handleChat} aria-label="Chat" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#dee9fc] text-[#121c2a] flex items-center justify-center active:scale-95 transition-transform">
-                  <span className="material-symbols-outlined text-[20px]">chat</span>
-                </button>
-              </div>
-            </div>
-            
-            <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
-              <span className="px-2.5 py-1 bg-[#e6eeff] text-[#404943] rounded-full text-[10px] leading-[14px] tracking-[0.04em] font-medium whitespace-nowrap shrink-0">Eco-friendly Rider 🌱</span>
-              <span className="px-2.5 py-1 bg-[#e6eeff] text-[#404943] rounded-full text-[10px] leading-[14px] tracking-[0.04em] font-medium whitespace-nowrap shrink-0">Top Rated 🌟</span>
-              <span className="px-2.5 py-1 bg-[#e6eeff] text-[#404943] rounded-full text-[10px] leading-[14px] tracking-[0.04em] font-medium whitespace-nowrap shrink-0">Mask On 😷</span>
-            </div>
-          </div>
-
-          {/* Order Details Card */}
-          <div className="w-full bg-white rounded-xl p-4 shadow-sm space-y-4">
-            <div className="flex items-start gap-2">
-              <div className="w-8 h-8 shrink-0 rounded-full bg-[#F7D61D] text-black flex items-center justify-center mt-0.5">
-                <span className="material-symbols-outlined text-[18px]">location_on</span>
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] leading-[14px] tracking-[0.04em] font-semibold text-[#404943] uppercase">Deliver To</span>
-                <span className="text-[14px] leading-[20px] text-[#121c2a] font-semibold truncate">Flat 402, Green Valley Apts</span>
-                <span className="text-[12px] leading-[16px] text-[#404943] truncate">North Campus, Sector 9 • "Leave at door"</span>
-              </div>
+              ) : (
+                <p className="text-[12px] text-[#404943]">Order items are unavailable.</p>
+              )}
             </div>
 
-            <div className="bg-[#eff4ff] rounded-xl p-2">
-              <div className="flex items-center justify-between mb-2 px-1 gap-2">
-                <span className="text-[12px] leading-[16px] tracking-[0.02em] font-semibold text-[#121c2a] truncate">Basket Highlights (2)</span>
-                <span className="text-[10px] leading-[14px] tracking-[0.04em] text-[#F7D61D] font-semibold cursor-pointer hover:underline shrink-0">View All</span>
+            <div className="space-y-2 border-t border-gray-100 pt-3 text-[12px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[#404943]">Payment</span>
+                <span className="text-right font-medium">{paymentLabel}</span>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between bg-white p-2 rounded-lg gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-8 h-8 shrink-0 rounded-lg bg-[#eff4ff] flex items-center justify-center text-[#F7D61D]">
-                      <span className="material-symbols-outlined text-[18px]">eco</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[12px] leading-[16px] text-[#121c2a] font-medium truncate">Fresh Farm Broccoli</p>
-                      <p className="text-[10px] leading-[14px] tracking-[0.04em] text-[#404943] truncate">1 kg • Crisp Handpicked</p>
-                    </div>
-                  </div>
-                  <span className="text-[12px] leading-[16px] tracking-[0.02em] font-semibold text-[#121c2a] shrink-0">$3.80</span>
+              {order.paymentStatus && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[#404943]">Payment status</span>
+                  <span className="font-medium capitalize">{order.paymentStatus}</span>
                 </div>
-                
-                <div className="flex items-center justify-between bg-white p-2 rounded-lg gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-8 h-8 shrink-0 rounded-lg bg-[#eff4ff] flex items-center justify-center text-[#ba1a1a]">
-                      <span className="material-symbols-outlined text-[18px]">nutrition</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[12px] leading-[16px] text-[#121c2a] font-medium truncate">Organic Tomatoes</p>
-                      <p className="text-[10px] leading-[14px] tracking-[0.04em] text-[#404943] truncate">500g • Vine Ripened</p>
-                    </div>
-                  </div>
-                  <span className="text-[12px] leading-[16px] tracking-[0.02em] font-semibold text-[#121c2a] shrink-0">$2.40</span>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[#404943]">Item total</span>
+                <span>{formatMoney(order.subtotal, order.currency)}</span>
+              </div>
+              {order.deliveryFee > 0 && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[#404943]">Delivery fee</span>
+                  <span>{formatMoney(order.deliveryFee, order.currency)}</span>
                 </div>
+              )}
+              {order.handlingFee > 0 && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[#404943]">Handling fee</span>
+                  <span>{formatMoney(order.handlingFee, order.currency)}</span>
+                </div>
+              )}
+              {order.discount > 0 && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[#404943]">Discount</span>
+                  <span>-{formatMoney(order.discount, order.currency)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-2 text-[14px] font-bold">
+                <span>Total</span>
+                <span>{formatMoney(order.total, order.currency)}</span>
               </div>
             </div>
-
-            <div className="flex items-center justify-between pt-1 border-t border-gray-100 gap-2">
-              <div className="flex items-center gap-1.5 text-[#404943] min-w-0">
-                <span className="material-symbols-outlined text-[16px] shrink-0">credit_card</span>
-                <span className="text-[12px] leading-[16px] truncate">Paid with Apple Pay</span>
-              </div>
-              <span className="text-[12px] leading-[16px] tracking-[0.02em] text-[#121c2a] font-bold shrink-0">$6.20</span>
-            </div>
-
-            <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
-              <button className="inline-flex items-center gap-1 text-[#F7D61D] hover:text-[#F7D61D] text-[12px] leading-[16px] tracking-[0.02em] font-semibold transition-colors">
-                <span className="material-symbols-outlined text-[18px] shrink-0">help_center</span>
-                <span className="truncate">Need Help with Order?</span>
-              </button>
-              <button className="text-[#404943] hover:text-[#ba1a1a] text-[10px] leading-[14px] tracking-[0.04em] font-medium transition-colors shrink-0">
-                Delivery Instructions
-              </button>
-            </div>
-          </div>
+          </section>
         </div>
       </main>
-
-      {/* ================= TOAST NOTIFICATION ================= */}
-      <div 
-        className={`fixed bottom-6 left-4 right-4 bg-[#27313f] text-[#eaf1ff] rounded-xl px-4 py-3 shadow-lg flex items-center justify-between transition-opacity duration-300 z-50 ${
-          toastVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="material-symbols-outlined text-[#F7D61D] text-[20px] shrink-0">notifications_active</span>
-          <span className="text-[12px] leading-[16px] truncate">{toastMessage}</span>
-        </div>
-        <button onClick={() => setToastVisible(false)} className="text-[#eaf1ff] hover:text-white shrink-0">
-          <span className="material-symbols-outlined text-[18px]">close</span>
-        </button>
-      </div>
-
-      {/* Custom Scrollbar Hide for chips */}
       <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .track-route-active {
+          animation: track-route-dash 1.2s linear infinite;
+        }
+        @keyframes track-route-dash {
+          to { stroke-dashoffset: -24; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .track-route-active { animation: none; }
+        }
       `}</style>
     </div>
   );

@@ -576,8 +576,7 @@ console.log("Cart data received in CheckoutPayment:", {
 
           {/* Dummy payment hint */}
           <p className="mt-5 text-[10px] leading-relaxed text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-            Demo mode: koi bhi asli paisa nahi katega. Koi bhi 16-digit card chalega, card number
-            0002 se end ho to payment fail hoga. UPI ke liye test@upi jaisa kuch bhi daal sakte ho.
+            <strong>Note:</strong> This is a dummy payment page. For testing, you can use only cash on delevery option to continue.
           </p>
         </div>
         {/* END: MainContent */}

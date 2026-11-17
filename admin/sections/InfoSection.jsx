@@ -58,6 +58,7 @@ export default function InfoSection({ type }) {
           })}
         </div>
       )}
+
     </div>
   );
 }

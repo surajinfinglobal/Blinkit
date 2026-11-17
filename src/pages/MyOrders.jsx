@@ -2,8 +2,9 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav.jsx';
+import PulseSplash from '../components/PulseSplash.jsx';
 import OrderProgress from '../components/OrderProgress.jsx';
-import {getMyOrdersAPI} from "../services/orderplaceService.js"
+import {getMyOrdersAPI,cancelOrderAPI} from "../services/orderplaceService.js"
 import NoOrder from '../assets/Blinkit _No_ Orders.png'
 import { addToCart, updateCartQuantity } from '../services/cartService';
 
@@ -338,11 +339,11 @@ const PastCard = ({ order, index, open, onToggle, onInvoice, onRate, onHelp, onR
         </div>
         <div
           className={`flex items-center gap-1 rounded-full px-2 py-1 ${
-            cancelled ? 'bg-[#ffdad6] text-[#93000a]' : 'bg-[#ffe08f]'
+            cancelled ? 'bg-[#ffdad6] text-[#93000a]' : 'bg-[#0C831F]'
           }`}
         >
-          <span className="material-symbols-outlined text-[14px]">{cancelled ? 'close' : 'check'}</span>
-          <span className="text-[11px] font-bold">{cancelled ? 'Cancelled' : 'Delivered'}</span>
+          <span className="material-symbols-outlined text-white text-[14px]">{cancelled ? 'close' : 'check'}</span>
+          <span className="text-[11px] text-white font-bold">{cancelled ? 'Cancelled' : 'Delivered'}</span>
         </div>
       </div>
 
@@ -737,7 +738,7 @@ const HelpSheet = ({ order, onSubmit, onClose }) => {
   );
 };
 
-const ConfirmCancel = ({ order, onConfirm, onClose }) =>
+const ConfirmCancel = ({ order, onConfirm, onClose ,loading}) =>
   createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm fade-in" onClick={onClose}>
       <div className="zoom-in flex w-full max-w-[320px] flex-col items-center rounded-2xl bg-white p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -750,7 +751,20 @@ const ConfirmCancel = ({ order, onConfirm, onClose }) =>
         </p>
         <div className="flex w-full gap-3">
           <button onClick={onClose} className="flex-1 rounded-xl bg-[#eeeeec] py-2.5 text-[14px] font-semibold active:scale-95 transition-transform">Keep order</button>
-          <button onClick={onConfirm} className="flex-1 rounded-xl bg-red-500 py-2.5 text-[14px] font-semibold text-white active:scale-95 transition-transform">Yes, cancel</button>
+          <button
+    onClick={onConfirm}
+    disabled={loading}
+    className="flex-1 rounded-xl bg-red-500 py-2.5 text-[14px] font-semibold text-white active:scale-95 transition-transform disabled:opacity-60"
+  >
+    {loading ? (
+      <span className="flex items-center justify-center gap-2">
+        <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        Cancelling...
+      </span>
+    ) : (
+      'Yes, cancel'
+    )}
+  </button>
         </div>
       </div>
     </div>,
@@ -793,6 +807,7 @@ export default function MyOrders() {
   const toastTimer = useRef(null);
   const searchRef = useRef(null);
   const mainRef = useRef(null);
+  const [cancelling, setCancelling] = useState(false);
 
   // BottomNav ki height naap lo (fixed ho ya in-flow, jagah reserve rahe)
   const navWrapRef = useRef(null);
@@ -819,10 +834,12 @@ export default function MyOrders() {
 
   useEffect(() => {
     let active = true;
-
-    getMyOrdersAPI()
+     const fetchOrders = () => {
+      //  console.log(`[MyOrders] Fetching orders at ${new Date().toLocaleTimeString()}`);
+     getMyOrdersAPI()
       .then((apiOrders) => {
         if (!active) return;
+        //  console.log(`[MyOrders] Orders fetched:`, apiOrders.length);
         const mappedOrders = apiOrders.map((order) => {
           const parsedPlacedAt = new Date(order.createdAt).getTime();
           const placedAt = Number.isFinite(parsedPlacedAt) ? parsedPlacedAt : Date.now();
@@ -878,7 +895,7 @@ export default function MyOrders() {
           };
         });
         setOrders(mappedOrders);
-        console.log(mappedOrders);
+        // console.log(mappedOrders);
         setOrdersError('');
       })
       .catch((error) => {
@@ -892,7 +909,15 @@ export default function MyOrders() {
     return () => {
       active = false;
     };
-  }, [reloadOrders]);
+  };
+  fetchOrders(); // Pehla call
+    const intervalId = setInterval(fetchOrders, 60000); // Har 60 seconds
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   // Live tick (sirf tab jab koi ongoing order ho)
   const hasOngoing = orders.some((o) => o.status === 'ongoing');
@@ -904,7 +929,8 @@ export default function MyOrders() {
 
   useEffect(() => {
     if (!hasOngoing) return;
-    const id = setInterval(() => setReloadOrders((attempt) => attempt + 1), 15000);
+    // const id = setInterval(() => setReloadOrders((attempt) => attempt + 1), 15000);
+    const id = setInterval(() => setReloadOrders((attempt) => attempt + 1), 60000);
     return () => clearInterval(id);
   }, [hasOngoing]);
 
@@ -962,12 +988,37 @@ export default function MyOrders() {
     }
   };
 
-  const cancelOrder = (o) => {
-    updateOrder(o.id, { status: 'cancelled' });
-    setSheet(null);
-    showToast(`Order #${o.id} cancelled. Refund on the way`);
-  };
+  const cancelOrder = async(o) => {
+    if (cancelling) return;
+    try{
+      setCancelling(true);
+      const response = await cancelOrderAPI(o.id);
 
+      updateOrder(o.id, { 
+      status: 'cancelled',
+      rawStatus: 'cancelled',
+      refundStatus: response.refund?.status || null,
+    });
+    setSheet(null);
+    const refundMsg = response.refund 
+      ? `Refund of ₹${inr(response.refund.amount)} process ho raha hai`
+      : 'Order cancel ho gaya';
+     showToast(refundMsg, {
+      action: { 
+        label: 'View details', 
+        onClick: () => setSheet({ type: 'invoice', id: o.id }) 
+      },
+    });
+ } catch (error) {
+    console.error('Cancel error:', error);
+    showToast(error.message || 'Order cancel nahi ho paya', { type: 'error' });
+  } finally {
+    setCancelling(false);
+  }
+};
+
+
+  
   const focusSearch = () => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => searchRef.current?.focus(), 250);
@@ -1114,10 +1165,7 @@ export default function MyOrders() {
 
               {/* ================= EMPTY STATE ================= */}
               {loading ? (
-                <div className="flex items-center justify-center gap-3 py-16 text-[14px] font-semibold text-[#5f5e61]">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#F7D61D] border-t-transparent" />
-                  Loading your orders...
-                </div>
+                <PulseSplash/>
               ) : ordersError ? (
                 <div role="alert" className="fade-up mt-4 flex flex-col items-center px-4 py-12 text-center">
                   <h2 className="mb-2 text-[18px] font-bold">Orders load nahi ho sake</h2>
@@ -1293,7 +1341,7 @@ export default function MyOrders() {
         />
       )}
       {sheet?.type === 'cancel' && sheetOrder && (
-        <ConfirmCancel order={sheetOrder} onClose={closeSheet} onConfirm={() => cancelOrder(sheetOrder)} />
+        <ConfirmCancel order={sheetOrder} onClose={closeSheet} onConfirm={() => cancelOrder(sheetOrder)} loading={cancelling}  />
       )}
 
       {/* ================= TOAST ================= */}

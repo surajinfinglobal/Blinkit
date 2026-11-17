@@ -19,7 +19,7 @@ export default function LandingDelivery({ onNext, onBack }) {
       {/* Illustration Section */}
       <section 
         className="relative w-full flex-1 flex items-center justify-center overflow-hidden"
-        style={{ backgroundColor: '#F5F7FA' }} // <--- Background pakka apply hoga
+        style={{ backgroundColor: '#F5F7FA' }} 
       >
         {/* Image container */}
         <div 

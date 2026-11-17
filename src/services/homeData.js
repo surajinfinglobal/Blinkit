@@ -1,5 +1,13 @@
 export const categories = ['Vegetables', 'Fruits', 'Dry Fruits', 'Electronics'];
 
+ const categoryIcons = {
+  All: { icon: 'apps', anim: 'group-hover:rotate-12', color: 'text-blue-600' },
+  Vegetables: { icon: 'eco', anim: 'group-hover:animate-bounce', color: 'text-green-600' },
+  Fruits: { icon: 'nutrition', anim: 'group-hover:scale-125', color: 'text-orange-500' },
+  'Dry Fruits': { icon: 'grain', anim: 'group-hover:rotate-45', color: 'text-amber-700' },
+  Electronics: { icon: 'devices', anim: 'group-hover:scale-110', color: 'text-sky-600' },
+};
+
   const organicVegetables = [
     {
       id: 1,
@@ -303,4 +311,4 @@ export const productsByCategory = {
   Electronics: electronicsArr,
 };
 
-export { organicVegetables, organicFruits, dryFruits, electronics, mixedVegetables };
+export { organicVegetables, organicFruits, dryFruits, electronics, mixedVegetables,categoryIcons };

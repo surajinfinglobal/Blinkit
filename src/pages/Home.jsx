@@ -1,13 +1,55 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import Diwali from '../assets/Festive Diwali .png'
 import { useNavigate } from "react-router-dom";
 import LocationChip from '../components/LocationChip.jsx';
-import { categories, productsByCategory } from '../services/homeData.js';
+import { categories } from '../services/homeData.js';
+import VegetablesIcon from '../assets/icons2/Vegetables.png';
+import FruitsIcon from '../assets/icons2/Fruits.png';
+import DryFruitsIcon from '../assets/icons2/Dry_Fruits.png';
+import ElectronicsIcon from '../assets/icons2/Electronics.png';
+
+import BabyCareIcon from '../assets/icons/Baby_Care.png';
+import BeautyWellnessIcon from '../assets/icons/Beauty_Wellness.png';
+import DairyBakeryIcon from '../assets/icons/Dairy_Bakery.png';
+import DryFruitsIconAll from '../assets/icons/Dry_Fruits.png';
+import ElectronicsIconAll from '../assets/icons/Electronics.png';
+import FruitsIconAll from '../assets/icons/Fruits.png';
+import HomeKitchenIcon from '../assets/icons/Home_Kitchen.png';
+import HouseholdIcon from '../assets/icons/Household.png';
+import PersonalCareIcon from '../assets/icons/Personal_Care.png';
+import PetCareIcon from '../assets/icons/Pet_Care.png';
+import SnacksDrinksIcon from '../assets/icons/Snacks_Drinks.png';
+import VegetablesIconAll from '../assets/icons/Vegetables.png';
+
+const categoryImages = {
+  Vegetables: VegetablesIcon,
+  Fruits: FruitsIcon,
+  'Dry Fruits': DryFruitsIcon,
+  Electronics: ElectronicsIcon,
+};
+
+const allCategoryIcons = [
+  { name: 'Baby Care', src: BabyCareIcon },
+  { name: 'Beauty & Wellness', src: BeautyWellnessIcon },
+  { name: 'Dairy & Bakery', src: DairyBakeryIcon },
+  { name: 'Dry Fruits', src: DryFruitsIconAll },
+  { name: 'Electronics', src: ElectronicsIconAll },
+  { name: 'Fruits', src: FruitsIconAll },
+  { name: 'Home & Kitchen', src: HomeKitchenIcon },
+  { name: 'Household', src: HouseholdIcon },
+  { name: 'Personal Care', src: PersonalCareIcon },
+  { name: 'Pet Care', src: PetCareIcon },
+  { name: 'Snacks & Drinks', src: SnacksDrinksIcon },
+  { name: 'Vegetables', src: VegetablesIconAll },
+];
+import { searchProducts } from '../services/productApi.js';
 import { addToCart } from "../services/cartService";
+import PulseSplash from '../components/PulseSplash.jsx';
 import { getDistanceAPI } from "../services/distanceService.js";
-import { addAddressAPI,getAddressesAPI} from '../services/addressService.js';
+import { addAddressAPI, getAddressesAPI } from '../services/addressService.js';
 import { setSelectedAddress, subscribeToSelectedAddress } from "../services/selectedAddress.js";
-import { addFavoriteAPI,removeFavoriteAPI } from '../services/favoriteService.js';
+import { addFavoriteAPI, getFavoritesAPI, removeFavoriteAPI } from '../services/favoriteService.js';
 // import CurrentLocation from '../components/CurrentLocation';getAddressesAPI 
 
 /* ================= HELPERS ================= */
@@ -15,15 +57,39 @@ import { addFavoriteAPI,removeFavoriteAPI } from '../services/favoriteService.js
 const MIN_ETA = 6;
 const MAX_ETA = 20;
 const randomEta = () => Math.floor(Math.random() * (MAX_ETA - MIN_ETA + 1)) + MIN_ETA;
+const shuffleProducts = (products) => {
+  const shuffled = [...products];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+};
+const formatProductPrice = (product) => {
+  if (typeof product.priceLabel === "string" && product.priceLabel.trim()) {
+    return product.priceLabel;
+  }
 
-  const EMPTY_ADDRESS_FORM = {
-    house: "",
-    apartment: "",
-    area: "",
-    landmark: "",
-    city: "",
-    pincode: "",
-  };
+  const price = Number(product.price);
+  if (!Number.isFinite(price)) return "Price unavailable";
+
+  const formattedPrice = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(price);
+
+  return product.unit ? `${formattedPrice} / ${product.unit}` : formattedPrice;
+};
+
+const EMPTY_ADDRESS_FORM = {
+  house: "",
+  apartment: "",
+  area: "",
+  landmark: "",
+  city: "",
+  pincode: "",
+};
 
 // Address storage (localStorage) – checkout page bhi yahi se padh sakta hai
 const ADDR_KEY = "grocery_addresses";
@@ -85,13 +151,14 @@ const AddButton = ({ onAdd }) => {
 
   return (
     <button
+      type="button"
       onClick={handleClick}
+      onKeyDown={(event) => event.stopPropagation()}
       aria-label="Add to cart"
-      className={`flex-shrink-0 flex items-center justify-center min-w-[34px] h-[18px] px-1.5 rounded border text-[9px] font-bold transition-all duration-200 active:scale-90 ${
-        state === "added"
+      className={`flex-shrink-0 flex items-center justify-center min-w-[34px] h-[18px] px-1.5 rounded border text-[9px] font-bold transition-all duration-200 active:scale-90 ${state === "added"
           ? "added-pop border-[#259535] bg-[#EAF5EC] text-[#0C831F]"
           : "border-[#F7D61D] bg-[#F7D61D]/10 text-gray-800 hover:bg-[#F7D61D]/30"
-      }`}
+        }`}
     >
       {state === "loading" ? (
         <span className="h-2.5 w-2.5 rounded-full border-2 border-black/20 border-t-black animate-spin" />
@@ -105,7 +172,7 @@ const AddButton = ({ onAdd }) => {
 };
 
 /* Grid ka product card */
-const ProductCard = ({ product, index, isFav, onToggleFav, onAdd, renderStars }) => {
+const ProductCard = ({ product, index, isFav, onToggleFav, onAdd, onSelect, renderStars }) => {
   const [loaded, setLoaded] = useState(false);
   const imgRef = useRef(null);
 
@@ -116,6 +183,15 @@ const ProductCard = ({ product, index, isFav, onToggleFav, onAdd, renderStars })
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(product)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(product);
+        }
+      }}
       className="group fade-up flex flex-col bg-white rounded-xl p-1.5 shadow-sm relative w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
       style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
     >
@@ -127,17 +203,20 @@ const ProductCard = ({ product, index, isFav, onToggleFav, onAdd, renderStars })
           loading="lazy"
           onLoad={() => setLoaded(true)}
           onError={() => setLoaded(true)}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${
-            loaded ? "opacity-100" : "opacity-0"
-          }`}
+          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${loaded ? "opacity-100" : "opacity-0"
+            }`}
           src={product.image}
         />
         <button
+          type="button"
           aria-label={`${isFav ? "Remove" : "Add"} ${product.name} ${isFav ? "from" : "to"} favourites`}
-          onClick={onToggleFav}
-          className={`absolute top-1.5 right-1.5 w-5 h-5 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform ${
-            isFav ? "text-red-500" : "text-gray-400"
-          }`}
+          onKeyDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFav();
+          }}
+          className={`absolute top-1.5 right-1.5 w-5 h-5 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform ${isFav ? "text-red-500" : "text-gray-400"
+            }`}
         >
           <i
             key={isFav ? "on" : "off"}
@@ -155,7 +234,7 @@ const ProductCard = ({ product, index, isFav, onToggleFav, onAdd, renderStars })
           {product.name}
         </h3>
         <div className="flex items-center justify-between mt-1 gap-1">
-          <span className="text-[10px] font-bold text-gray-800 truncate">{product.price}</span>
+          <span className="text-[10px] font-bold text-gray-800 truncate">{formatProductPrice(product)}</span>
           <AddButton onAdd={onAdd} />
         </div>
       </div>
@@ -163,22 +242,115 @@ const ProductCard = ({ product, index, isFav, onToggleFav, onAdd, renderStars })
   );
 };
 
+const ProductSkeleton = () => (
+  <article aria-hidden="true" className="flex flex-col rounded-xl bg-white p-1.5 shadow-sm">
+    <div className="shimmer aspect-square w-full rounded-lg" />
+    <div className="mt-2 space-y-1.5 px-0.5">
+      <div className="shimmer h-2 w-10 rounded" />
+      <div className="shimmer h-3 w-full rounded" />
+      <div className="flex items-center justify-between gap-1">
+        <div className="shimmer h-3 w-12 rounded" />
+        <div className="shimmer h-[18px] w-[34px] rounded" />
+      </div>
+    </div>
+  </article>
+);
+
+const ProductGrid = ({
+  products,
+  activeCategory,
+  favorites,
+  onToggleFavorite,
+  onAdd,
+  onSelect,
+  renderStars,
+  scrollRoot,
+  loading,
+}) => {
+  const [visibleCount, setVisibleCount] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches
+      ? 36
+      : 18
+  );
+  const [loadingNext, setLoadingNext] = useState(false);
+  const visibleProducts = products.slice(0, visibleCount);
+  const skeletonCount = Math.min(6, Math.max(0, products.length - visibleCount));
+
+  useEffect(() => {
+    if (!loadingNext) return undefined;
+    const timer = setTimeout(() => {
+      setVisibleCount((count) => Math.min(count + 18, products.length));
+      setLoadingNext(false);
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [loadingNext, products.length]);
+
+  useEffect(() => {
+    if (!scrollRoot || loading || visibleCount >= products.length) return undefined;
+
+    const loadWhenNearEnd = () => {
+      const remaining =
+        scrollRoot.scrollHeight - scrollRoot.scrollTop - scrollRoot.clientHeight;
+      if (remaining <= 300) setLoadingNext(true);
+    };
+    scrollRoot.addEventListener("scroll", loadWhenNearEnd, { passive: true });
+    return () => scrollRoot.removeEventListener("scroll", loadWhenNearEnd);
+  }, [loading, products.length, scrollRoot, visibleCount]);
+
+  return (
+    <div
+      key={activeCategory}
+      aria-busy={loading || loadingNext}
+      className="grid gap-2.5 pb-4"
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(95px, 1fr))" }}
+    >
+      {visibleProducts.map((product, index) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          index={index}
+          isFav={!!favorites[product.id]}
+          onToggleFav={() => onToggleFavorite(product)}
+          onAdd={() => onAdd(product)}
+          onSelect={onSelect}
+          renderStars={renderStars}
+        />
+      ))}
+      {(loading || loadingNext) &&
+        Array.from({ length: loading ? 6 : skeletonCount }).map((_, index) => (
+          <ProductSkeleton key={`skeleton-${index}`} />
+        ))}
+    </div>
+  );
+};
+
 /* Carousel ka chhota card */
-const CarouselCard = ({ product, onAdd }) => (
-  <div className="w-[116px] shrink-0 mr-2.5 bg-white rounded-xl p-1.5 shadow-sm transition-transform duration-300 hover:-translate-y-1">
+const CarouselCard = ({ product, onAdd, onSelect }) => (
+  <article
+    role="button"
+    tabIndex={0}
+    onClick={() => onSelect(product)}
+    onKeyDown={(event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onSelect(product);
+      }
+    }}
+    className="w-[116px] shrink-0 mr-2.5 bg-white rounded-xl p-1.5 shadow-sm transition-transform duration-300 hover:-translate-y-1 cursor-pointer"
+  >
     <div className="rounded-lg overflow-hidden aspect-[4/3] bg-gray-50">
       <img alt={product.name} loading="lazy" className="w-full h-full object-cover" src={product.image} />
     </div>
     <h3 className="text-[11px] font-semibold text-gray-800 leading-tight mt-1.5 truncate">{product.name}</h3>
     <div className="flex items-center justify-between mt-1 gap-1">
-      <span className="text-[10px] font-bold text-gray-800 truncate">{product.price}</span>
+      <span className="text-[10px] font-bold text-gray-800 truncate">{formatProductPrice(product)}</span>
       <AddButton onAdd={() => onAdd(product)} />
     </div>
-  </div>
+  </article>
 );
 
 
-const AutoCarousel = ({ items, onAdd }) => {
+const AutoCarousel = ({ items, onAdd, onSelect }) => {
   const [paused, setPaused] = useState(false);
   const resumeTimer = useRef(null);
   useEffect(() => () => clearTimeout(resumeTimer.current), []);
@@ -209,7 +381,7 @@ const AutoCarousel = ({ items, onAdd }) => {
         }}
       >
         {track.map((p, i) => (
-          <CarouselCard key={`${p.id}-${i}`} product={p} onAdd={onAdd} />
+          <CarouselCard key={`${p.id}-${i}`} product={p} onAdd={onAdd} onSelect={onSelect} />
         ))}
       </div>
     </div>
@@ -236,11 +408,34 @@ const AddressField = ({ label, required, error, children }) => (
 
 const GroceryApp = () => {
   const navigate = useNavigate();
+  const [apiProducts, setApiProducts] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productScrollRoot, setProductScrollRoot] = useState(null);
 
   // ---- State ----
-  const [activeCategory, setActiveCategory] = useState(categories[0]); // Default 'Vegetables'
+  const [activeCategory, setActiveCategory] = useState("All");
   const [favorites, setFavorites] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return undefined;
+    let active = true;
+
+    getFavoritesAPI()
+      .then((favoriteIds) => {
+        if (!active) return;
+        setFavorites(
+          Object.fromEntries(favoriteIds.map((id) => [String(id), true]))
+        );
+      })
+      .catch((error) => {
+        console.error("Favourites load error:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // ---- Location state ----
   const [addresses, setAddresses] = useState(() => loadJSON(ADDR_KEY, DEFAULT_ADDRESSES));
@@ -257,9 +452,68 @@ const GroceryApp = () => {
   const [fieldErrors, setFieldErrors] = useState({});
 
   const [distance, setDistance] = useState(null);
-const [travelTime, setTravelTime] = useState(null);
+  const [travelTime, setTravelTime] = useState(null);
 
   const selectedAddress = addresses.find((a) => a.id === selectedId) || addresses[0] || null;
+  const productSearchText = searchQuery.trim();
+  const productSearchKey = JSON.stringify([activeCategory, productSearchText]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadProducts = async () => {
+      setApiProducts({ key: productSearchKey, products: [], loading: true });
+
+      try {
+        const categoriesToLoad =
+          activeCategory === "All" ? categories : [activeCategory];
+        const results = await Promise.allSettled(
+          categoriesToLoad.map((category) =>
+            searchProducts(productSearchText || category)
+          )
+        );
+        const products = results
+          .filter((result) => result.status === "fulfilled")
+          .flatMap((result) => result.value);
+        const uniqueProducts = [
+          ...new Map(products.map((product) => [product.id, product])).values(),
+        ];
+        if (uniqueProducts.length === 0 && results.every((result) => result.status === "rejected")) {
+          throw results[0].reason;
+        }
+        const displayProducts =
+          activeCategory === "All"
+            ? shuffleProducts(uniqueProducts)
+            : uniqueProducts;
+
+        if (active) {
+          setApiProducts({
+            key: productSearchKey,
+            products: displayProducts,
+            loading: false,
+          });
+        }
+      } catch (error) {
+        console.error("Could not load products from QuickCommerce:", error);
+        if (active) {
+          setApiProducts({
+            key: productSearchKey,
+            products: [],
+            loading: false,
+            error: true,
+            errorMessage: error.message || "Products could not be loaded. Please try again.",
+          });
+        }
+      }
+    };
+
+    const timer = setTimeout(loadProducts, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [activeCategory, productSearchKey, productSearchText]);
+
   // const selectedLocation = selectedAddress;
   // const wholeLocationContent = selectedAddress
   //   ? `${selectedAddress.label ? selectedAddress.label + " · " : ""}${selectedAddress.line || ""}${selectedAddress.pincode ? " - " + selectedAddress.pincode : ""}`
@@ -279,20 +533,20 @@ const [travelTime, setTravelTime] = useState(null);
 
 
   const [form, setForm] = useState(EMPTY_ADDRESS_FORM);
-const updateField = (field, value) => {
-  const cleanValue = field === "pincode"
-    ? value.replace(/\D/g, "").slice(0, 6)
-    : value;
+  const updateField = (field, value) => {
+    const cleanValue = field === "pincode"
+      ? value.replace(/\D/g, "").slice(0, 6)
+      : value;
 
-  setForm((prev) => ({ ...prev, [field]: cleanValue }));
-  
-  setFieldErrors((prev) => {
-    if (!prev[field]) return prev; // Agar koi error nahi, toh naya object mat banao
-    const next = { ...prev };
-    delete next[field];
-    return next;
-  });
-};
+    setForm((prev) => ({ ...prev, [field]: cleanValue }));
+
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev; // Agar koi error nahi, toh naya object mat banao
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   useEffect(() => {
     // console.log("Saved addresses:", addresses);
@@ -325,7 +579,9 @@ const updateField = (field, value) => {
         existing &&
         existing.label === address.label &&
         existing.line === address.line &&
-        existing.pincode === address.pincode
+        existing.pincode === address.pincode &&
+        existing.lat === address.lat &&
+        existing.lng === address.lng
       ) {
         return current;
       }
@@ -352,28 +608,28 @@ const updateField = (field, value) => {
     return () => added.forEach((l) => l.remove());
   }, []);
 
-  const toggleFavorite =async (id,productName) =>{
-     const isCurrentlyFav = !!favorites[id];
+  const toggleFavorite = async (id, productName) => {
+    const isCurrentlyFav = !!favorites[id];
 
-       setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
     if (isCurrentlyFav) {
-        showToast(`${productName} removed from favourites`, { type: "error" });
-      } else {
-        showToast(`${productName} added to favourites ❤️`);
-      }
-      try{
-        if(isCurrentlyFav){
-            await removeFavoriteAPI(id);
+      showToast(`${productName} removed from favourites`, { type: "error" });
     } else {
-      await addFavoriteAPI(id);
+      showToast(`${productName} added to favourites ❤️`);
     }
- } catch (error) {
-    console.error('Favourite API error:', error);
-    // Rollback — API fail hui to UI wapas revert karo
-    setFavorites((prev) => ({ ...prev, [id]: isCurrentlyFav }));
-    showToast(error.message || 'Favourite update nahi hua', { type: 'error' });
-  }
-};
+    try {
+      if (isCurrentlyFav) {
+        await removeFavoriteAPI(id);
+      } else {
+        await addFavoriteAPI(id);
+      }
+    } catch (error) {
+      console.error('Favourite API error:', error);
+      // Rollback — API fail hui to UI wapas revert karo
+      setFavorites((prev) => ({ ...prev, [id]: isCurrentlyFav }));
+      showToast(error.message || 'Favourite update nahi hua', { type: 'error' });
+    }
+  };
 
 
   const [toast, setToast] = useState(null);
@@ -393,6 +649,43 @@ const updateField = (field, value) => {
       : null;
   const recognitionRef = useRef(null);
   const [listening, setListening] = useState(false);
+
+  const [searchPlaceholder, setSearchPlaceholder] = useState("Search ");
+  useEffect(() => {
+    if (listening) return undefined;
+    const words = [...new Set(allCategoryIcons.map((s) => s.name))];
+    let wordIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+    let timer;
+
+    const tick = () => {
+      const word = words[wordIndex % words.length];
+      if (!deleting) {
+        charIndex += 1;
+        setSearchPlaceholder(`Search ${word.slice(0, charIndex)}`);
+        if (charIndex === word.length) {
+          deleting = true;
+          timer = setTimeout(tick, 1500);
+          return;
+        }
+        timer = setTimeout(tick, 55 + Math.random() * 35);
+      } else {
+        charIndex -= 1;
+        setSearchPlaceholder(`Search ${word.slice(0, charIndex)}`);
+        if (charIndex <= 0) {
+          deleting = false;
+          wordIndex = (wordIndex + 1) % words.length;
+          timer = setTimeout(tick, 450);
+          return;
+        }
+        timer = setTimeout(tick, 30 + Math.random() * 20);
+      }
+    };
+
+    timer = setTimeout(tick, 500);
+    return () => clearTimeout(timer);
+  }, [listening]);
 
   useEffect(() => () => recognitionRef.current?.abort?.(), []);
 
@@ -469,11 +762,11 @@ const updateField = (field, value) => {
     setShowSheet(false);
   };
 
-const deleteAddress = (id) => {
-  const rest = addresses.filter((a) => a.id !== id);
-  setAddresses(rest);
-  if (selectedId === id) setSelectedId(rest[0]?.id ?? null);
-};
+  const deleteAddress = (id) => {
+    const rest = addresses.filter((a) => a.id !== id);
+    setAddresses(rest);
+    if (selectedId === id) setSelectedId(rest[0]?.id ?? null);
+  };
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
       setLocError("Aapka browser location support nahi karta. Address manually add karo.");
@@ -503,17 +796,17 @@ const deleteAddress = (id) => {
         }
 
         const current = {
-    id: "current",       // Fixed ID taaki duplicate na ho
-    label: "Current",    // Label
-    line,
-    pincode,
-    lat: latitude,
-    lng: longitude,
-  };
-       setAddresses((prev) => [current, ...prev.filter((a) => a.id !== "current")]);
-  setSelectedId("current"); // Select karo
-  setLocating(false);
-  setShowSheet(false);
+          id: "current",       // Fixed ID taaki duplicate na ho
+          label: "Current",    // Label
+          line,
+          pincode,
+          lat: latitude,
+          lng: longitude,
+        };
+        setAddresses((prev) => [current, ...prev.filter((a) => a.id !== "current")]);
+        setSelectedId("current"); // Select karo
+        setLocating(false);
+        setShowSheet(false);
       },
       (err) => {
         setLocating(false);
@@ -528,124 +821,124 @@ const deleteAddress = (id) => {
   };
 
 
-const fetchAddresses = async ()=>{
-  try {
-    const savedAddresses = await getAddressesAPI();
-    console.log('Saved addresses:', savedAddresses);
+  const fetchAddresses = async () => {
+    try {
+      const savedAddresses = await getAddressesAPI();
+      console.log('Saved addresses:', savedAddresses);
     } catch (error) {
-    console.error('Fetch addresses error:', error);
-  }
-}
-
-useEffect(() => {
-  fetchAddresses();
-}, []);
-const saveNewAddress = async () => {
-
-  const errors = {};
-  if (!form.house.trim()) errors.house = "House / Flat number required hai";
-  if (!form.area.trim()) errors.area = "Area / Street required hai";
-  if (!form.city.trim()) errors.city = "City required hai";
-  if (!/^\d{6}$/.test(form.pincode)) errors.pincode = "6-digit valid pincode daalo";
-
-  if (Object.keys(errors).length > 0) {
-    setFieldErrors(errors);
-    setFormError("Kuch fields galat hain, check karein.");
-    return;
+      console.error('Fetch addresses error:', error);
+    }
   }
 
-  setFieldErrors({});
-  setFormError("");
+  useEffect(() => {
+    fetchAddresses();
+  }, []);
+  const saveNewAddress = async () => {
 
-  const addressPayload = {
-    label: newLabel,
-    houseNo: form.house.trim(),
-    floor: form.apartment.trim(), 
-    area: form.area.trim(),
-    landmark: form.landmark.trim(),
-    city: form.city.trim(),
-    pincode: form.pincode,
-  };
+    const errors = {};
+    if (!form.house.trim()) errors.house = "House / Flat number required hai";
+    if (!form.area.trim()) errors.area = "Area / Street required hai";
+    if (!form.city.trim()) errors.city = "City required hai";
+    if (!/^\d{6}$/.test(form.pincode)) errors.pincode = "6-digit valid pincode daalo";
 
-  // Console mein pura address print karo
-  // console.log("📤 Sending Address to API:", addressPayload);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setFormError("Kuch fields galat hain, check karein.");
+      return;
+    }
 
-  try {
-    setSaving(true);
+    setFieldErrors({});
+    setFormError("");
 
-    // API Call
-    const response = await addAddressAPI(addressPayload);
-    // console.log(" API Response:", response);
-
-    const saved = response.address;
-    // console.log(" Address saved in DB:", saved);
-
-    // ---- UI ke liye local address object ----
-    const line = `${form.house}, ${form.area}, ${form.city} - ${form.pincode}`;
-
-    const addr = {
-      id: saved?._id || `a${Date.now()}`,
+    const addressPayload = {
       label: newLabel,
-      line,
+      houseNo: form.house.trim(),
+      floor: form.apartment.trim(),
+      area: form.area.trim(),
+      landmark: form.landmark.trim(),
+      city: form.city.trim(),
       pincode: form.pincode,
     };
 
-    // Local state mein add karo aur select karo
-    setAddresses((prev) => [...prev, addr]);
-    setSelectedId(addr.id);
+    // Console mein pura address print karo
+    // console.log("📤 Sending Address to API:", addressPayload);
 
-    // Form reset
-    setForm(EMPTY_ADDRESS_FORM);
-    setNewLabel("Home");
-    setShowSheet(false);
+    try {
+      setSaving(true);
 
-    showToast("Address saved successfully");
-  } catch (error) {
-    // console.error("❌ Save address error:", error);
-    setFormError(error.message || "Address save nahi ho paya");
-    showToast(error.message || "Address save nahi ho paya", { type: "error" });
-  } finally {
-    setSaving(false);
-  }
-};
+      // API Call
+      const response = await addAddressAPI(addressPayload);
+      // console.log(" API Response:", response);
+
+      const saved = response.address;
+      // console.log(" Address saved in DB:", saved);
+
+      // ---- UI ke liye local address object ----
+      const line = `${form.house}, ${form.area}, ${form.city} - ${form.pincode}`;
+
+      const addr = {
+        id: saved?._id || `a${Date.now()}`,
+        label: newLabel,
+        line,
+        pincode: form.pincode,
+      };
+
+      // Local state mein add karo aur select karo
+      setAddresses((prev) => [...prev, addr]);
+      setSelectedId(addr.id);
+
+      // Form reset
+      setForm(EMPTY_ADDRESS_FORM);
+      setNewLabel("Home");
+      setShowSheet(false);
+
+      showToast("Address saved successfully");
+    } catch (error) {
+      // console.error("❌ Save address error:", error);
+      setFormError(error.message || "Address save nahi ho paya");
+      showToast(error.message || "Address save nahi ho paya", { type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
 
-const calculateDeliveryDistance = async () => {
- try {
-    const result = await getDistanceAPI({
-      startLat: 23.0331,
-      startLng: 72.5714,
-      endLat:  22.9734,
-      endLng: 72.5841,
-    });
+  const calculateDeliveryDistance = async () => {
+    try {
+      const result = await getDistanceAPI({
+        startLat: 23.0331,
+        startLng: 72.5714,
+        endLat: 22.9734,
+        endLng: 72.5841,
+      });
 
-    console.log("Road distance:", result.distanceKm, "km");
-    console.log("Travel time:", result.durationMinutes, "minutes");
+      console.log("Road distance:", result.distanceKm, "km");
+      console.log("Travel time:", result.durationMinutes, "minutes");
 
-    return result; // Important: result return karo
-  } catch (error) {
-    console.error("Distance error:", error.message);
-    return null;
-  }
-};
+      return result; // Important: result return karo
+    } catch (error) {
+      console.error("Distance error:", error.message);
+      return null;
+    }
+  };
 
-// try {
-//     const result = await getDistanceAPI({
-//       // Delivery store ke coordinates
-//       startLat: STORE_LAT,
-//       startLng: STORE_LNG,
+  // try {
+  //     const result = await getDistanceAPI({
+  //       // Delivery store ke coordinates
+  //       startLat: STORE_LAT,
+  //       startLng: STORE_LNG,
 
-//       // Selected customer address ke coordinates
-//       endLat: customerAddress.lat,
-//       endLng: customerAddress.lng,
-const handleCalculateDistance = async () => {
-  const result = await calculateDeliveryDistance();
+  //       // Selected customer address ke coordinates
+  //       endLat: customerAddress.lat,
+  //       endLng: customerAddress.lng,
+  const handleCalculateDistance = async () => {
+    const result = await calculateDeliveryDistance();
 
-  if (result) {
-    setDistance(result.distanceKm);
-    setTravelTime(result.durationMinutes);
-  }
-};
+    if (result) {
+      setDistance(result.distanceKm);
+      setTravelTime(result.durationMinutes);
+    }
+  };
 
   // const result = await calculateDeliveryDistance(selectedAddress);
 
@@ -668,17 +961,71 @@ const handleCalculateDistance = async () => {
     ));
 
   // Carousel ke liye poori category ka (unchanged) data
-  const categoryProducts = productsByCategory[activeCategory] || [];
+  const currentApiProducts =
+    apiProducts?.key === productSearchKey
+      ? apiProducts.products
+      : null;
+  const categoryProducts = currentApiProducts || [];
+  const apiProductsLoading =
+    apiProducts?.key !== productSearchKey || apiProducts.loading;
+  const apiProductsError =
+    apiProducts?.key === productSearchKey && apiProducts.error;
 
-  // Get products for the active category from homeData.js and filter by search
-  const currentProducts = (productsByCategory[activeCategory] || []).filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const currentProducts = categoryProducts.filter((product) =>
+    product.name.toLowerCase().includes(productSearchText.toLowerCase())
   );
+
+  const shuffleArray = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const pickSixUnique = () => {
+    const pool = shuffleArray(allCategoryIcons);
+    return pool.slice(0, 6).map((item) => ({ ...item, k: Math.random() }));
+  };
+
+  const [iconSlots, setIconSlots] = useState(() => pickSixUnique());
+
+  useEffect(() => {
+    let queue = shuffleArray(allCategoryIcons);
+    let idx = 0;
+
+    const timer = setInterval(() => {
+      setIconSlots((prev) => {
+        const used = new Set(prev.map((s) => s.name));
+        const next = [...prev];
+        const slotIdx = Math.floor(Math.random() * next.length);
+        // pick next icon from queue that is not currently shown, covering all icons over time
+        let candidate = null;
+        for (let tries = 0; tries < queue.length; tries += 1) {
+          const c = queue[idx % queue.length];
+          idx += 1;
+          if (!used.has(c.name) || tries === queue.length - 1) {
+            candidate = c;
+            break;
+          }
+        }
+        if (!candidate) candidate = queue[idx++ % queue.length];
+        if (idx % queue.length === 0) queue = shuffleArray(allCategoryIcons);
+        next[slotIdx] = { ...candidate, k: Math.random() };
+        return next;
+      });
+    }, 1600);
+    return () => clearInterval(timer);
+  }, []);
 
   const inputCls =
     "w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#F7D61D] focus:ring-1 focus:ring-[#F7D61D] transition";
 
 
+  if (apiProducts === null && apiProductsLoading) {
+    return <PulseSplash />;
+  }
   return (
     <>
       <style>{`
@@ -690,6 +1037,15 @@ const handleCalculateDistance = async () => {
           to   { transform: translateY(0); }
         }
         .sheet-up { animation: sheetUp 0.25s ease-out; }
+
+        @keyframes iconJump {
+          0%   { transform: translateY(0) scale(1); }
+          35%  { transform: translateY(-10px) scale(1.08); }
+          55%  { transform: translateY(0) scale(1); }
+          75%  { transform: translateY(-4px); }
+          100% { transform: translateY(0); }
+        }
+        .icon-jump { animation: iconJump 0.55s ease; }
 
         /* backwards fill: animation ke baad hover transform kaam karta rahe */
         @keyframes fadeUp {
@@ -832,12 +1188,12 @@ const handleCalculateDistance = async () => {
                   </span>
                 </div>
               </div>
-<button className="header-in ring-pulse shrink-0 w-11 h-11 rounded-full
+              <button className="header-in ring-pulse shrink-0 w-11 h-11 rounded-full
 material-symbols-outlined text-black text-[26px] leading-none
  bg-white flex items-center justify-center shadow-md
   border-2 border-white/80 transition-transform duration-200 hover:scale-105 active:scale-90" onClick={handleCalculateDistance}>
-  Calculate 
-</button>
+                Calculate
+              </button>
               <button
                 type="button"
                 onClick={() => navigate("/account")}
@@ -859,8 +1215,14 @@ material-symbols-outlined text-black text-[26px] leading-none
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={listening ? "Listening..." : `Search in ${activeCategory}...`}
-                className="w-full h-11 pl-10 pr-20 rounded-full text-sm bg-white text-gray-800 placeholder-gray-400 focus:outline-none shadow-md border-0"
+                placeholder={
+                  listening
+                    ? "Listening"
+                    : searchQuery
+                      ? `Search ${activeCategory === "All" ? "products" : `in ${activeCategory}`}`
+                      : searchPlaceholder
+                }
+                className="w-full h-11 pl-10 pr-20 rounded-full text-sm bg-white text-gray-800 placeholder-gray-400 placeholder:transition-opacity placeholder:duration-150 focus:outline-none shadow-md border-0"
               />
 
               {/* Clear */}
@@ -881,9 +1243,8 @@ material-symbols-outlined text-black text-[26px] leading-none
                 onClick={toggleVoiceSearch}
                 aria-label={listening ? "Stop voice search" : "Start voice search"}
                 aria-pressed={listening}
-                className={`absolute right-1.5 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
-                  listening ? "bg-red-500 text-white mic-pulse" : "text-gray-500 hover:bg-gray-100"
-                }`}
+                className={`absolute right-1.5 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${listening ? "bg-red-500 text-white mic-pulse" : "text-gray-500 hover:bg-gray-100"
+                  }`}
               >
                 {listening ? (
                   <span className="flex items-center gap-[2px] h-3.5">
@@ -897,36 +1258,66 @@ material-symbols-outlined text-black text-[26px] leading-none
               </button>
             </div>
           </header>
-
           {/* ---------- Scrollable Content ---------- */}
-          <main className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 pb-24 space-y-4">
+          <main ref={setProductScrollRoot} className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 pb-24 space-y-4">
+            {/* <img
+                  alt="Fast and fresh grocery delivery"
+                  className="w-full object-contain mix-blend-multiply pointer-events-none select-none"
+                  src={Diwali}
+                  /> */}
+            {/* All Category Icons */}
+            <section className="px-1">
+              <div className="grid grid-cols-3 gap-y-2 justify-items-center">
+                {iconSlots.map((item) => (
+                  <div key={item.k} className="icon-jump flex items-center justify-center">
+                    <img src={item.src} alt={item.name} className="h-28 w-28 object-contain" loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            </section>
 
             {/* Category Tabs (Top Navigation) */}
             <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-1">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={(e) => {
-                    const btn = e.currentTarget;
-                    setActiveCategory(cat);
-                    setSearchQuery(""); // Reset search when switching categories
-                    btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-                  }}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-lg text-[13px] font-bold transition-all duration-200 active:scale-95 ${
-                    activeCategory === cat
-                      ? "bg-[#F7D61D] text-black shadow-sm"
-                      : "bg-white text-gray-500 hover:bg-gray-50"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const isActive = activeCategory === cat;
+                const imgSrc = categoryImages[cat];
+
+                return (
+                  <button
+                    key={cat}
+                    onClick={(e) => {
+                      const btn = e.currentTarget;
+                      setActiveCategory(cat);
+                      setSearchQuery("");
+                      btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                    }}
+                    aria-label={cat}
+                    className={`group flex-shrink-0 flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 `}
+                  >
+                    {/* ${isActive
+                        ? "bg-[#F7D61D] shadow-sm p-1.5"
+                        : "bg-white hover:bg-gray-50 p-1.5"
+                      } */}
+                    {imgSrc ? (
+                      <img
+                        src={imgSrc}
+                        alt={cat}
+                        className={`h-28 w-28 object-contain transition-transform duration-300 ${isActive ? "scale-120" : ""}`}
+                      />
+                    ) : (
+                      <span className={`px-3 py-2 text-[13px] font-bold ${isActive ? "text-black" : "text-gray-600"}`}>
+                        {cat}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </nav>
 
             {/* Products Section */}
             <section className="pt-1">
               {/* ---------- Auto Carousel (isi category ka data repeat hota hai) ---------- */}
-              {!searchQuery && categoryProducts.length > 0 && (
+              {activeCategory !== "All" && !searchQuery && categoryProducts.length > 0 && (
                 <div key={`carousel-${activeCategory}`} className="mb-4 fade-up">
                   <div className="flex items-center justify-between mb-1.5 px-1">
                     <h2 className="flex items-center gap-2 text-[14px] font-extrabold text-gray-900 tracking-tight">
@@ -938,52 +1329,142 @@ material-symbols-outlined text-black text-[26px] leading-none
                     </h2>
                     <span className="text-[10px] text-gray-400 font-medium">Hold to pause</span>
                   </div>
-                  <AutoCarousel items={categoryProducts} onAdd={handleAddToCart} />
+                  <AutoCarousel
+                    items={categoryProducts}
+                    onAdd={handleAddToCart}
+                    onSelect={setSelectedProduct}
+                  />
                 </div>
               )}
 
               <div className="flex items-baseline justify-between mb-3 px-1">
                 <h2 className="text-[16px] font-extrabold text-gray-900 tracking-tight">
-                  {activeCategory}
+                  {activeCategory === "All" ? "All Products" : activeCategory}
                 </h2>
                 <span className="text-[11px] text-gray-500 font-medium">
                   {currentProducts.length} items
                 </span>
               </div>
 
-              {currentProducts.length === 0 ? (
+              {currentProducts.length === 0 && apiProductsLoading ? (
+                <div
+                  aria-busy="true"
+                  className="grid gap-2.5 pb-4"
+                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(95px, 1fr))" }}
+                >
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <ProductSkeleton key={`loading-skeleton-${index}`} />
+                  ))}
+                </div>
+              ) : currentProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center fade-up">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3 floaty">
                     <span className="material-symbols-outlined text-[32px] text-gray-400">search_off</span>
                   </div>
-                  <h3 className="text-[16px] font-bold text-gray-800">No products found</h3>
+                  <h3 className="text-[16px] font-bold text-gray-800">
+                    {apiProductsLoading
+                      ? "Loading products..."
+                      : apiProductsError
+                        ? "Products could not be loaded"
+                        : "No products found"}
+                  </h3>
                   <p className="text-[13px] text-gray-500 mt-1 max-w-[200px]">
-                    Try searching for something else.
+                    {apiProductsLoading
+                      ? "Please wait while we fetch products."
+                      : apiProductsError
+                        ? apiProducts.errorMessage
+                        : "Try searching for something else."}
                   </p>
                 </div>
               ) : (
-                /* ✅ Auto-Responsive Grid: Mobile par 3, badi screen par 4-5 */
-                <div
-                  key={activeCategory}
-                  className="grid gap-2.5 pb-4"
-                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(95px, 1fr))' }}
-                >
-                  {currentProducts.map((product, index) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      index={index}
-                      isFav={!!favorites[product.id]}
-                      onToggleFav={() => toggleFavorite(product.id, product.name)}
-                      onAdd={() => handleAddToCart(product)}
-                      renderStars={renderStars}
-                    />
-                  ))}
-                </div>
+                <ProductGrid
+                  key={productSearchKey}
+                  products={currentProducts}
+                  activeCategory={activeCategory}
+                  favorites={favorites}
+                  onToggleFavorite={(product) => toggleFavorite(product.id, product.name)}
+                  onAdd={handleAddToCart}
+                  onSelect={setSelectedProduct}
+                  renderStars={renderStars}
+                  scrollRoot={productScrollRoot}
+                  loading={apiProductsLoading}
+                />
               )}
             </section>
           </main>
-          
+
+
+          {selectedProduct &&
+            createPortal(
+              <div
+                className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+                onClick={() => setSelectedProduct(null)}
+              >
+                <section
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="product-details-title"
+                  className="w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="relative aspect-square w-full max-h-[45dvh] bg-gray-50">
+                    {selectedProduct.image && (
+                      <img
+                        src={selectedProduct.image}
+                        alt={selectedProduct.name}
+                        className="h-full w-full object-contain"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Close product details"
+                      onClick={() => setSelectedProduct(null)}
+                      className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow"
+                    >
+                      <span className="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+                  <div className="p-5">
+                    {selectedProduct.category && (
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {selectedProduct.category}
+                      </p>
+                    )}
+                    <h2 id="product-details-title" className="mt-1 text-xl font-bold text-gray-900">
+                      {selectedProduct.name}
+                    </h2>
+                    {selectedProduct.brand && (
+                      <p className="mt-1 text-sm text-gray-500">{selectedProduct.brand}</p>
+                    )}
+                    <p className="mt-2 text-lg font-bold text-gray-900">
+                      {formatProductPrice(selectedProduct)}
+                      {selectedProduct.mrp && (
+                        <span className="ml-2 text-sm font-normal text-gray-400 line-through">
+                          {new Intl.NumberFormat("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                            maximumFractionDigits: 2,
+                          }).format(selectedProduct.mrp)}
+                        </span>
+                      )}
+                    </p>
+                    {selectedProduct.description && (
+                      <p className="mt-3 text-sm leading-relaxed text-gray-600">
+                        {selectedProduct.description}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(selectedProduct)}
+                      className="mt-5 w-full rounded-xl bg-[#F7D61D] px-4 py-3 text-sm font-bold text-gray-900 transition hover:bg-[#edce16] active:scale-[0.99]"
+                    >
+                      Add to cart
+                    </button>
+                  </div>
+                </section>
+              </div>,
+              document.body
+            )}
 
 
           {/* ================= TOAST (portal: BottomNav ke upar) ================= */}
@@ -995,9 +1476,8 @@ material-symbols-outlined text-black text-[26px] leading-none
                   className="toast-in pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-[#27313f] py-2 pl-4 pr-3 text-[12px] font-semibold text-[#eaf1ff] shadow-lg"
                 >
                   <span
-                    className={`material-symbols-outlined text-[18px] ${
-                      toast.type === "error" ? "text-[#ff8a80]" : "text-[#F7D61D]"
-                    }`}
+                    className={`material-symbols-outlined text-[18px] ${toast.type === "error" ? "text-[#ff8a80]" : "text-[#F7D61D]"
+                      }`}
                   >
                     {toast.type === "error" ? "error" : "check_circle"}
                   </span>
@@ -1106,10 +1586,10 @@ material-symbols-outlined text-black text-[26px] leading-none
                     )}
                     <div className="divide-y divide-gray-100">
                       {addresses.map((addr, i) => {
-                       const active = selectedAddress?.id === addr.id; // ID se match
+                        const active = selectedAddress?.id === addr.id; // ID se match
                         return (
                           <div
-                           key={addr.id} // ✅ ID as key
+                            key={addr.id} // ✅ ID as key
                             onClick={() => selectAddress(addr.id)} // ✅ ID pass
                             role="radio"
                             aria-checked={active}
@@ -1117,9 +1597,8 @@ material-symbols-outlined text-black text-[26px] leading-none
                             style={{ animationDelay: `${i * 60}ms` }}
                           >
                             <span
-                              className={`material-symbols-outlined text-[22px] mt-0.5 ${
-                                active ? "text-[#B8860B]" : "text-gray-400"
-                              }`}
+                              className={`material-symbols-outlined text-[22px] mt-0.5 ${active ? "text-[#B8860B]" : "text-gray-400"
+                                }`}
                             >
                               {LABEL_ICONS[addr.label] || "location_on"} {/* ✅ Label Icon */}
                             </span>
@@ -1155,7 +1634,7 @@ material-symbols-outlined text-black text-[26px] leading-none
 
                 {/* ---------- ADD VIEW ---------- */}
                 {sheetView === "add" && (
-                  <fieldset  className="m-0 min-w-0 space-y-3 border-0 p-0">
+                  <fieldset className="m-0 min-w-0 space-y-3 border-0 p-0">
                     {/* Label chips */}
                     <div className="flex gap-2">
                       {["Home", "Work", "Other"].map((l) => (
@@ -1163,11 +1642,10 @@ material-symbols-outlined text-black text-[26px] leading-none
                           key={l}
                           type="button"
                           onClick={() => setNewLabel(l)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${
-                            newLabel === l
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition disabled:opacity-60 ${newLabel === l
                               ? "bg-[#F7D61D] border-[#F7D61D] text-black"
                               : "bg-white border-gray-200 text-gray-500"
-                          }`}
+                            }`}
                         >
                           <span className="material-symbols-outlined text-[16px]">{LABEL_ICONS[l]}</span>
                           {l}
@@ -1189,7 +1667,7 @@ material-symbols-outlined text-black text-[26px] leading-none
 
                     <AddressField label="Apartment / Society">
                       <input
-                      key="Apartment-input"
+                        key="Apartment-input"
                         type="text"
                         value={form.apartment}
                         onChange={(e) => updateField("apartment", e.target.value)}
@@ -1201,7 +1679,7 @@ material-symbols-outlined text-black text-[26px] leading-none
 
                     <AddressField label="Area / Street" required error={fieldErrors.area}>
                       <input
-                      key="area-input"
+                        key="area-input"
                         type="text"
                         value={form.area}
                         onChange={(e) => updateField("area", e.target.value)}
@@ -1213,7 +1691,7 @@ material-symbols-outlined text-black text-[26px] leading-none
 
                     <AddressField label="Landmark">
                       <input
-                      key="landmark-input"
+                        key="landmark-input"
                         type="text"
                         value={form.landmark}
                         onChange={(e) => updateField("landmark", e.target.value)}
@@ -1225,7 +1703,7 @@ material-symbols-outlined text-black text-[26px] leading-none
                     <div className="grid grid-cols-2 gap-3">
                       <AddressField label="City" required error={fieldErrors.city}>
                         <input
-                        key="city-input"
+                          key="city-input"
                           type="text"
                           value={form.city}
                           onChange={(e) => updateField("city", e.target.value)}
@@ -1236,12 +1714,12 @@ material-symbols-outlined text-black text-[26px] leading-none
                       </AddressField>
                       <AddressField label="Pincode" required error={fieldErrors.pincode}>
                         <input
-                        key="pincode-input"
+                          key="pincode-input"
                           type="text"
                           inputMode="numeric"
                           maxLength={6}
                           value={form.pincode}
-                           onChange={(e) => updateField("pincode", e.target.value)}
+                          onChange={(e) => updateField("pincode", e.target.value)}
                           placeholder="110007"
                           autoComplete="postal-code"
                           className={`${inputCls} ${fieldErrors.pincode ? "!border-red-400" : ""}`}
