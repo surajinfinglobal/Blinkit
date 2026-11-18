@@ -875,7 +875,7 @@ export default function UserProfile() {
           </ul>
         </section>
 
-        <p className="mt-5 text-center text-xs text-gray-400">Version 1.0.0</p>
+        <p className="mt-5 text-center text-xs text-gray-400">Design and Development by Suraj</p>
       </main>
 
       {/* ================= Sheets ================= */}
