@@ -80,6 +80,7 @@ io.on("connection", (socket) => {
     console.log("A user disconnected: " + socket.id);
   });
 });
+// use server.listen instead of app.listen to allow socket.io to work
 async function startServer() {
   try {
     await mongoose.connect(process.env.MONGO_URI)
