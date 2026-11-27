@@ -7,6 +7,7 @@ import OrderProgress from '../components/OrderProgress.jsx';
 import {getMyOrdersAPI,cancelOrderAPI} from "../services/orderplaceService.js"
 import NoOrder from '../assets/Blinkit _No_ Orders.png'
 import { addToCart, updateCartQuantity } from '../services/cartService';
+import socket, { connectSocket } from '../socket.js';
 
 /* ================= CONFIG ================= */
 
@@ -203,7 +204,7 @@ const RepeatButton = ({ onRepeat }) => {
       type="button"
       onClick={handle}
       disabled={state === 'loading'}
-      className={`flex h-10 items-center gap-1.5 rounded-full px-4 text-[13px] font-bold shadow-sm transition-all active:scale-95 disabled:opacity-80 ${
+      className={`flex h-8 items-center gap-1.5 rounded-full px-2 text-[10px] font-bold shadow-sm transition-all active:scale-95 disabled:opacity-80 ${
         state === 'done' ? 'added-pop bg-[#EAF5EC] text-[#0C831F]' : 'bg-[#F7D61D] text-[#1a1c1b]'
       }`}
     >
@@ -587,8 +588,10 @@ const p = ongoing ? getProgress(order).fill / 100 : 1;
   );
 };
 
-const InvoiceSheet = ({ order, onClose, onToast }) => (
-  <Sheet title={order.status === 'cancelled' ? 'Receipt' : 'Invoice'} onClose={onClose}>
+const InvoiceSheet = ({ order, onClose, onToast }) => {
+  const navigate = useNavigate();
+  return (
+    <Sheet title={order.status === 'cancelled' ? 'Receipt' : 'Invoice'} onClose={onClose}>
     <div className="mb-3 flex items-center justify-between text-[12px] text-[#5f5e61]">
       <span>#{order.id}</span>
       <span>{fmtDate(order.placedAt)}</span>
@@ -618,8 +621,7 @@ const InvoiceSheet = ({ order, onClose, onToast }) => (
     <button
       type="button"
       onClick={() => {
-        downloadInvoice(order);
-        onToast('Invoice downloaded');
+        navigate('/Receipt', { state: { order } });
       }}
       className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F7D61D] text-[14px] font-bold shadow-sm transition active:scale-[0.98]"
     >
@@ -627,7 +629,8 @@ const InvoiceSheet = ({ order, onClose, onToast }) => (
       Download {order.status === 'cancelled' ? 'receipt' : 'invoice'}
     </button>
   </Sheet>
-);
+  );
+};
 
 const RateSheet = ({ order, onSave, onClose }) => {
   const [stars, setStars] = useState(order.rating?.stars || 0);
@@ -933,6 +936,51 @@ export default function MyOrders() {
     const id = setInterval(() => setReloadOrders((attempt) => attempt + 1), 60000);
     return () => clearInterval(id);
   }, [hasOngoing]);
+
+  useEffect(() => {
+    connectSocket();
+    const onStatusUpdate = ({ order }) => {
+      if (!order) return;
+      const orderId = order.orderId || order._id;
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id !== orderId && o.id !== order._id) return o;
+          const rawStatus = order.orderStatus || o.rawStatus;
+          const status = {
+            received: 'ongoing',
+            packing: 'ongoing',
+            out_for_delivery: 'ongoing',
+            delivered: 'delivered',
+            cancelled: 'cancelled',
+          }[rawStatus] || o.status;
+          const rider = order.assignedRider;
+          return {
+            ...o,
+            rawStatus,
+            status,
+            paymentStatus: order.paymentStatus ?? o.paymentStatus,
+            deliveredInMins:
+              status === 'delivered' && o.status !== 'delivered'
+                ? Math.max(1, Math.round((Date.now() - o.placedAt) / MIN))
+                : o.deliveredInMins,
+            rider: rider
+              ? {
+                  name: rider.name || o.rider?.name || 'Not assigned',
+                  rating: o.rider?.rating || '—',
+                  phone: rider.phone || o.rider?.phone || '',
+                }
+              : o.rider,
+          };
+        })
+      );
+      showToast(`Order #${orderId} status updated`);
+    };
+
+    socket.on('order_status_updated', onStatusUpdate);
+    return () => {
+      socket.off('order_status_updated', onStatusUpdate);
+    };
+  }, []);
 
   const updateOrder = (id, patch) =>
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...(typeof patch === 'function' ? patch(o) : patch) } : o)));

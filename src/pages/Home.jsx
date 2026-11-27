@@ -1258,6 +1258,8 @@ material-symbols-outlined text-black text-[26px] leading-none
               </button>
             </div>
           </header>
+
+          
           {/* ---------- Scrollable Content ---------- */}
           <main ref={setProductScrollRoot} className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 pb-24 space-y-4">
             {/* <img

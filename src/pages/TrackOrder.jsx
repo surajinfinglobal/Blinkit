@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getMyOrdersAPI } from '../services/orderplaceService.js';
+import socket, { connectSocket } from '../socket.js';
 
 const STATUS_LABELS = {
   received: 'Order received',
@@ -161,9 +162,26 @@ export default function OrderTracking() {
     const isComplete = ['delivered', 'cancelled'].includes(order.status);
     const interval = isComplete ? null : setInterval(refreshOrder, 15000);
 
+    connectSocket();
+    const onStatusUpdate = ({ order: updated }) => {
+      if (!active || !updated) return;
+      const updatedId = updated.orderId || updated._id;
+      if (updatedId !== orderId) return;
+      setOrder((prev) => normalizeOrder({
+        ...updated,
+        billDetails: updated.billDetails || { itemTotal: prev.subtotal, handlingFee: prev.handlingFee, deliveryFee: prev.deliveryFee, discount: prev.discount, grandTotal: prev.total },
+        items: updated.items || prev.items,
+        deliveryAddress: updated.deliveryAddress || prev.address,
+        createdAt: updated.createdAt || prev.placedAt,
+      }));
+      setRefreshError('');
+    };
+    socket.on('order_status_updated', onStatusUpdate);
+
     return () => {
       active = false;
       if (interval) clearInterval(interval);
+      socket.off('order_status_updated', onStatusUpdate);
     };
   }, [navigate, orderId, order.status]);
 

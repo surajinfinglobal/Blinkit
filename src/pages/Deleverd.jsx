@@ -92,7 +92,7 @@ export default function DeliverySupport() {
             </span>
             <span className="text-[12px] leading-[16px] tracking-[0.02em] text-[#404943] font-semibold">#FG-89241</span>
           </div>
-          <button className="inline-flex items-center gap-1 text-[12px] leading-[16px] tracking-[0.02em] text-[#F7D61D] hover:text-[#F7D61D] transition-colors py-1 px-2 rounded-lg bg-[#eff4ff] active:scale-95" type="button">
+          <button className="inline-flex items-center gap-1 text-[12px] leading-[16px] tracking-[0.02em] text-[#F7D61D] hover:text-[#F7D61D] transition-colors py-1 px-2 rounded-lg bg-[#eff4ff] active:scale-95" type="button" onClick={() => navigate('/Receipt')}>
             <span className="material-symbols-outlined text-[18px]">receipt_long</span>
             <span>Receipt</span>
           </button>

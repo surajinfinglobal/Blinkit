@@ -196,6 +196,16 @@ router.patch(
         const updatedOrder = await Order.findById(order._id)
         .populate("assignedRider", "name phone status vehicle hub");
 
+      const io = req.app.get("io");
+      if (io) {
+        const room = `user:${updatedOrder.userId?._id || updatedOrder.userId}`;
+        io.to(room).emit("order_status_updated", { order: updatedOrder });
+        io.to("admin:orders").emit("admin:order_updated", {
+          order: updatedOrder,
+          action: "status",
+        });
+      }
+
       res.json({
         success: true,
         message: "Order status update ho gaya",

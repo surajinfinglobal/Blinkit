@@ -1,459 +1,493 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+"use client";
 
-export default function TaxInvoice() {
-  const navigate = useNavigate();
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [toast, setToast] = useState({ visible: false, message: "" });
+import { CheckCircleIcon, CircleNotchIcon, LightningIcon, PrinterIcon } from "@phosphor-icons/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import Invoice from '../assets/Blinkit _Download _Invoice.png';
+import jsPDF from 'jspdf';
 
-  // Fonts & Icons load karna
-  useEffect(() => {
-    const links = [
-      "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
-    ];
-    const added = links.map((href) => {
-      const l = document.createElement("link");
-      l.rel = "stylesheet";
-      l.href = href;
-      document.head.appendChild(l);
-      return l;
-    });
-    return () => added.forEach((l) => l.remove());
-  }, []);
+const easeOut = [0.23, 1, 0.32, 1];
+const easeInOut = [0.77, 0, 0.175, 1];
 
-  // Toast auto-hide logic
-  useEffect(() => {
-    if (!toast.visible) return;
-    const t = setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, 2400);
-    return () => clearTimeout(t);
-  }, [toast.visible, toast.message]);
+const defaultItems = [
+  { name: "Amul Taaza Milk", unit: "500 ml", qty: 2, price: 29 },
+  { name: "Fresh Tomato (Local)", unit: "500 g", qty: 1, price: 32 },
+  { name: "Lay's Magic Masala", unit: "52 g", qty: 3, price: 20 },
+  { name: "Britannia Brown Bread", unit: "400 g", qty: 1, price: 50 },
+  { name: "Robusta Banana", unit: "6 pcs", qty: 1, price: 45 },
+];
 
-  const showToast = (message) => {
-    setToast({ visible: true, message });
-  };
+const statusLabels = {
+  processing: "Prepare Your Invoice",
+  printing: "Printing your Invoice",
+  complete: "Delivered in {mins} minutes",
+};
 
-  const handleBack = () => navigate(-1);
+// ---------- Receipt tear-off edge ----------
+const toothCount = 40;
+const toothDepth = 4;
+const toothPoints = Array.from({ length: toothCount * 2 }, (_, i) => {
+  const x = 100 - ((i + 1) * 100) / (toothCount * 2);
+  const y = i % 2 === 0 ? "100%" : `calc(100% - ${toothDepth}px)`;
+  return `${x}% ${y}`;
+}).join(", ");
+const receiptClipPath = `polygon(0 0, 100% 0, 100% calc(100% - ${toothDepth}px), ${toothPoints})`;
 
-  const handleDownload = () => {
-    if (isDownloading) return;
-    setIsDownloading(true);
-    // Simulating PDF generation
-    setTimeout(() => {
-      setIsDownloading(false);
-      showToast("INV-2023-09841.pdf downloaded to device");
-    }, 1100);
-  };
+// ---------- Stepped paper feed (like a thermal head advancing) ----------
+const feedTransforms = [
+  "translateY(-100%)",
+  "translateY(-91%)", "translateY(-91%)",
+  "translateY(-81%)", "translateY(-81%)",
+  "translateY(-70%)", "translateY(-70%)",
+  "translateY(-58%)", "translateY(-58%)",
+  "translateY(-45%)", "translateY(-45%)",
+  "translateY(-32%)", "translateY(-32%)",
+  "translateY(-20%)", "translateY(-20%)",
+  "translateY(-10%)", "translateY(-10%)",
+  "translateY(-3%)", "translateY(-3%)",
+  "translateY(0%)",
+];
+const feedTimes = [
+  0, 0.075, 0.105, 0.18, 0.21, 0.285, 0.315, 0.39, 0.42, 0.495, 0.525, 0.6,
+  0.63, 0.705, 0.735, 0.81, 0.84, 0.915, 0.945, 1,
+];
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator
-        .share({
-          title: "Tax Invoice INV-2023-09841",
-          text: "FreshBazaar Mart Invoice for Order #QC-88421 ($6.71)",
-          url: window.location.href,
-        })
-        .catch(() => {});
-    } else {
-      showToast("Invoice link copied to clipboard");
-    }
-  };
+const rupee = (n) => `₹${n}`;
 
+function cn(...c) {
+  return c.filter(Boolean).join(" ");
+}
+
+// ---------- Wordmark ----------
+function Wordmark({ className }) {
   return (
-    <div className="bg-[#F5F7FA] font-['Plus_Jakarta_Sans',sans-serif] text-[#1a1c1b] flex flex-col min-h-screen relative">
-      
-      {/* ================= FIXED HEADER ================= */}
-      <header className="fixed top-0 w-full z-50 pt-safe bg-[#F5F7FA]/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="h-16 px-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 flex-1 min-w-0">
-            <button
-              onClick={handleBack}
-              aria-label="Go back"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-[#eeeeec] transition-colors"
-            >
-              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
-            </button>
-            <h1 className="text-[17px] leading-[22px] font-semibold truncate">
-              Tax Invoice
-            </h1>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              aria-label="Share Invoice"
-              onClick={handleShare}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-[#eeeeec] transition-colors"
-            >
-              <span className="material-symbols-outlined text-[22px]">share</span>
-            </button>
-            <button
-              aria-label="Download PDF"
-              onClick={handleDownload}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-[#eeeeec] transition-colors"
-            >
-              <span className="material-symbols-outlined text-[22px]">download</span>
-            </button>
-            {/* <div className="w-8 h-8 rounded-full bg-[#755b00] flex items-center justify-center ml-1">
-              <span className="material-symbols-outlined text-white text-[18px]">person</span>
-            </div> */}
-          </div>
-        </div>
-      </header>
+    <span className={cn("font-black lowercase leading-none tracking-tight text-[#1F1F1F]", className)}>
+      blink<span className="text-[#0C831F]">it</span>
+    </span>
+  );
+}
 
-      {/* ================= MAIN CONTENT ================= */}
-      <main className="flex flex-col relative w-full pt-16 pb-safe bg-[#F5F7FA] px-4">
-        <div className="flex flex-col w-full pb-8">
-          
-          {/* Order Meta Header */}
-          <div className="flex items-center justify-between py-2 mb-1">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F7D61D] text-[#241a00] shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-              </span>
-              <div>
-                <p className="text-[17px] leading-[22px] font-semibold">Order #QC-88421</p>
-                <p className="text-[13px] leading-[18px] text-[#4e4634]">24 Oct 2023 • 4:18 PM</p>
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#EAF5EC] text-[#0C831F] text-[13px] font-semibold shadow-sm">
-              <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                check_circle
-              </span>
-              PAID
-            </span>
-          </div>
+// ---------- Status indicator ----------
+function StatusIcon({ stage, animate, move }) {
+  const done = stage === "complete";
+  const common = {
+    animate: { opacity: 1, transform: "scale(1)" },
+    initial: { opacity: animate ? 0 : 1, transform: move ? "scale(0.94)" : "scale(1)" },
+    exit: { opacity: animate ? 0 : 1, transform: move ? "scale(0.96)" : "scale(1)" },
+    transition: { duration: animate ? 0.16 : 0, ease: easeOut },
+    className: "col-start-1 row-start-1 grid place-items-center text-[#0C831F]",
+  };
+  return (
+    <span aria-hidden="true" className="relative grid size-5 shrink-0 place-items-center">
+      <AnimatePresence initial={false} mode="sync">
+        {done ? (
+          <motion.span key="done" {...common}>
+            <CheckCircleIcon size={18} weight="fill" />
+          </motion.span>
+        ) : (
+          <motion.span key="work" {...common}>
+            <CircleNotchIcon
+              size={18}
+              weight="bold"
+              className={cn(animate && "animate-spin motion-reduce:animate-none")}
+            />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+}
 
-          {/* Invoice Paper Card */}
-          <div className="relative bg-white rounded-xl shadow-md overflow-hidden">
-            {/* Top Gradient Strip */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-[#F7D61D] via-[#F7D61D] to-[#EAF5EC]"></div>
-            
-            <div className="p-4 sm:p-5 flex flex-col gap-4">
-              
-              {/* Store Header */}
-              <div className="flex items-start justify-between pb-3">
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="material-symbols-outlined text-[#755b00] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      eco
-                    </span>
-                    <span className="text-[20px] leading-[26px] font-bold tracking-tight">FreshBazaar Mart</span>
-                  </div>
-                  <p className="text-[11px] leading-[14px] text-[#4e4634] tracking-wider uppercase">
-                    Tax Invoice & Cash Receipt
-                  </p>
-                  <p className="text-[13px] leading-[18px] text-[#4e4634] mt-0.5">
-                    Inv No: <span className="text-[13px] font-semibold text-[#1a1c1b]">INV-2023-09841</span>
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="inline-block px-2.5 py-1 rounded-md bg-[#e8e8e6] text-[11px] font-bold">
-                    Original for Recipient
-                  </span>
-                  <p className="text-[13px] leading-[18px] text-[#4e4634] mt-1">
-                    Supply Mode: <span className="text-[13px] font-semibold text-[#1a1c1b]">Express 15m</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* GST Info */}
-              <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-[#f4f4f2]">
-                <div>
-                  <p className="text-[11px] font-bold text-[#4e4634] uppercase">GSTIN / TAX ID</p>
-                  <p className="text-[13px] font-semibold mt-0.5">07AABCB1234F1Z8</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-[#4e4634] uppercase">FSSAI Central Lic No</p>
-                  <p className="text-[13px] font-semibold mt-0.5">10019011006540</p>
-                </div>
-              </div>
-
-              {/* Billed By / To */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-[#eeeeec]">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="material-symbols-outlined text-[#4e4634] text-[16px]">store</span>
-                    <span className="text-[13px] font-semibold">Billed By (Seller)</span>
-                  </div>
-                  <p className="text-[13px] font-semibold">FreshGrocery Retail Mart Pvt Ltd</p>
-                  <p className="text-[13px] leading-[18px] text-[#4e4634] mt-0.5">
-                    Plot 22, DLF Cyber Park, Sector 44,<br />
-                    Gurugram, Haryana - 122003
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-[#eeeeec]">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="material-symbols-outlined text-[#4e4634] text-[16px]">pin_drop</span>
-                    <span className="text-[13px] font-semibold">Billed & Shipped To</span>
-                  </div>
-                  <p className="text-[13px] font-semibold">Ayush Sharma</p>
-                  <p className="text-[13px] leading-[18px] text-[#4e4634] mt-0.5">
-                    Flat 402, Tower B, Lotus Court,<br />
-                    DU North Campus, New Delhi - 110007
-                  </p>
-                </div>
-              </div>
-
-              {/* Items Breakdown */}
-              <div className="pt-2">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[15px] font-bold">Itemized Tax Breakdown</span>
-                  <span className="text-[13px] text-[#4e4634]">3 line items</span>
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                  {/* Item 1 */}
-                  <div className="p-3 rounded-lg bg-[#f4f4f2] flex flex-col gap-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-11 h-11 rounded-lg overflow-hidden bg-[#eeeeec] shrink-0">
-                          <img className="w-full h-full object-cover" alt="Broccoli" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFefsXR4QpOkg45ESnCKhqojkcYs7pNpIcXIWQHze4XAF2t0sJZujisiF5AtEW8bzbAAStUt0Uuaip5X4zw0Pr-F0zQAAOmmQBINTVh7w8_H-hQLDekmnevZRXSr4qU0KU2e_nIxBBPynUBMZm3hPuxlmULdH_avSiVKDw-6VBkaTSYnOehVwP4yPcGDH1vTIKeOhcs7aho-REhaKDnOmVwCsdoq6i53v6CJUJZdk" />
-                        </div>
-                        <div>
-                          <p className="text-[13px] font-semibold">Fresh Farm Broccoli</p>
-                          <p className="text-[13px] text-[#4e4634]">1 kg • HSN: 0704</p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-[15px] font-bold">$3.99</p>
-                        <span className="text-[11px] font-bold text-[#6b7280]">GST 5% incl.</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1 pt-1.5 px-2 py-1.5 rounded bg-[#eeeeec] text-center">
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Qty</span><span className="text-[13px] font-semibold">1</span></div>
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Rate</span><span className="text-[13px] font-semibold">$3.80</span></div>
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Taxable</span><span className="text-[13px] font-semibold">$3.80</span></div>
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Tax Amt</span><span className="text-[13px] font-semibold">$0.19</span></div>
-                    </div>
-                  </div>
-                  
-                  {/* Item 2 */}
-                  <div className="p-3 rounded-lg bg-[#f4f4f2] flex flex-col gap-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-11 h-11 rounded-lg overflow-hidden bg-[#eeeeec] shrink-0">
-                          <img className="w-full h-full object-cover" alt="Tomatoes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7bWoef3TnJbje_28pZKIHlxf1NSo-7AOhQkpPOdt39M5bIdRJNyfeWU69zYR3CacwNLW2ev2RpS5qGs9NoNx-H7nx2yuhd1EFZMJZCIh8Zx8_r3U7hA_1KsHYX8MBPwap8HI-Ey_cYjwUILI2xCRh0NZ0LFnj1suF921Ozh9-iBvWimWuHL_Glhixl_ufKhrBSF5bBgoClchpc5aV-CbI527gSRmVk9JoTQSUjQs" />
-                        </div>
-                        <div>
-                          <p className="text-[13px] font-semibold">Vine Ripe Red Tomatoes</p>
-                          <p className="text-[13px] text-[#4e4634]">500g • HSN: 0702</p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-[15px] font-bold">$2.52</p>
-                        <span className="text-[11px] font-bold text-[#6b7280]">GST 5% incl.</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1 pt-1.5 px-2 py-1.5 rounded bg-[#eeeeec] text-center">
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Qty</span><span className="text-[13px] font-semibold">2</span></div>
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Rate</span><span className="text-[13px] font-semibold">$1.20</span></div>
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Taxable</span><span className="text-[13px] font-semibold">$2.40</span></div>
-                      <div><span className="text-[11px] font-bold text-[#4e4634] block">Tax Amt</span><span className="text-[13px] font-semibold">$0.12</span></div>
-                    </div>
-                  </div>
-
-                  {/* Item 3 */}
-                  <div className="p-3 rounded-lg bg-[#f4f4f2] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-11 h-11 rounded-lg bg-[#eeeeec] flex items-center justify-center text-[#755b00] shrink-0">
-                        <span className="material-symbols-outlined text-[22px]">shopping_bag</span>
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-semibold">Handling & Biodegradable Bag</p>
-                        <p className="text-[13px] text-[#4e4634]">HSN: 4819 • Qty: 1</p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[15px] font-bold">$0.20</p>
-                      <span className="text-[11px] font-bold text-[#4e4634]">Exempt</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bill Summary */}
-              <div className="p-4 rounded-xl bg-[#eeeeec]">
-                <p className="text-[15px] font-bold mb-3">Bill Summary & Calculation</p>
-                <div className="flex flex-col gap-2 text-[14px]">
-                  <div className="flex justify-between">
-                    <span className="text-[#4e4634]">Subtotal (Gross Value)</span>
-                    <span className="text-[13px] font-semibold">$6.20</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#4e4634] flex items-center gap-1">
-                      Delivery Partner Fee
-                      <span className="px-1.5 py-0.5 rounded bg-[#EAF5EC] text-[#0C831F] text-[11px] font-bold uppercase">Free</span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="line-through text-[#4e4634] text-[13px]">$1.99</span>
-                      <span className="text-[13px] font-semibold text-[#6b7280]">$0.00</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#4e4634]">Handling & Safety Fee</span>
-                    <span className="text-[13px] font-semibold">$0.20</span>
-                  </div>
-                  <div className="flex justify-between text-[#4e4634]">
-                    <span>Central GST (CGST @ 2.5%)</span>
-                    <span>$0.155</span>
-                  </div>
-                  <div className="flex justify-between text-[#4e4634]">
-                    <span>State GST (SGST @ 2.5%)</span>
-                    <span>$0.155</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#4e4634]">Total Applicable Taxes</span>
-                    <span className="text-[13px] font-semibold">$0.31</span>
-                  </div>
-                  
-                  <div className="mt-2 pt-3 flex justify-between items-baseline bg-white p-3 rounded-lg shadow-sm">
-                    <div>
-                      <p className="text-[17px] font-semibold">Total Amount Paid</p>
-                      <p className="text-[13px] text-[#6b7280] flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">format_image_left</span>
-                        Payment verified via Apple Pay
-                      </p>
-                    </div>
-                    <p className="text-[24px] leading-[30px] tracking-[-0.02em] font-bold text-right">$6.71</p>
-                  </div>
-                </div>
-                
-                <div className="mt-3 pt-2 text-[#4e4634] flex flex-col gap-1 text-[13px]">
-                  <div className="flex justify-between">
-                    <span>Transaction Reference:</span>
-                    <span className="text-[13px] font-semibold text-[#1a1c1b]">TXN_8842199023</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Payment Gateway Auth:</span>
-                    <span className="text-[13px] font-semibold text-[#1a1c1b]">APL-908234-OK</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* QR / Verified Section */}
-              <div className="p-3.5 rounded-xl bg-[#f4f4f2] flex items-center gap-3">
-                <div className="w-16 h-16 bg-white rounded-lg p-1.5 flex items-center justify-center shrink-0 shadow-sm">
-                  <svg className="w-full h-full text-[#1a1c1b]" fill="currentColor" viewBox="0 0 100 100">
-                    <rect height="30" rx="3" width="30" x="0" y="0"></rect>
-                    <rect fill="#ffffff" height="20" rx="1" width="20" x="5" y="5"></rect>
-                    <rect height="12" width="12" x="9" y="9"></rect>
-                    <rect height="30" rx="3" width="30" x="70" y="0"></rect>
-                    <rect fill="#ffffff" height="20" rx="1" width="20" x="75" y="5"></rect>
-                    <rect height="12" width="12" x="79" y="9"></rect>
-                    <rect height="30" rx="3" width="30" x="0" y="70"></rect>
-                    <rect fill="#ffffff" height="20" rx="1" width="20" x="5" y="75"></rect>
-                    <rect height="12" width="12" x="9" y="79"></rect>
-                    <rect height="20" width="6" x="36" y="8"></rect>
-                    <rect height="28" width="8" x="48" y="4"></rect>
-                    <rect height="6" width="22" x="6" y="38"></rect>
-                    <rect height="6" width="24" x="4" y="52"></rect>
-                    <rect height="28" rx="2" width="28" x="36" y="36"></rect>
-                    <rect fill="#ffffff" height="16" width="16" x="42" y="42"></rect>
-                    <rect height="6" width="22" x="72" y="38"></rect>
-                    <rect height="6" width="14" x="70" y="50"></rect>
-                    <rect height="16" width="8" x="88" y="50"></rect>
-                    <rect height="6" width="20" x="38" y="72"></rect>
-                    <rect height="12" width="12" x="38" y="84"></rect>
-                    <rect height="18" width="10" x="58" y="78"></rect>
-                    <rect height="22" width="22" x="74" y="74"></rect>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <span className="material-symbols-outlined text-[#755b00] text-[17px]">verified</span>
-                    <span className="text-[13px] font-semibold">IRN Verified e-Invoice</span>
-                  </div>
-                  <p className="text-[13px] text-[#4e4634] truncate">IRN: 47b9...c3080e7d9</p>
-                  <p className="text-[11px] text-[#4e4634] mt-0.5">Scan to authenticate on NIC GST Portal</p>
-                </div>
-              </div>
-
-              {/* Trust Badges */}
-              <div className="flex items-center justify-between text-center px-4 py-2 rounded-lg bg-[#e8e8e6] gap-2">
-                <div className="flex-1">
-                  <span className="material-symbols-outlined text-[#755b00] text-[20px]">local_shipping</span>
-                  <p className="text-[11px] font-bold mt-0.5">Delivered in 12m</p>
-                </div>
-                <div className="w-px h-6 bg-[#d1c5ae]"></div>
-                <div className="flex-1">
-                  <span className="material-symbols-outlined text-[#6b7280] text-[20px]">psychology_alt</span>
-                  <p className="text-[11px] font-bold mt-0.5">100% Tax Compliant</p>
-                </div>
-                <div className="w-px h-6 bg-[#d1c5ae]"></div>
-                <div className="flex-1">
-                  <span className="material-symbols-outlined text-[#4e4634] text-[20px]">lock</span>
-                  <p className="text-[11px] font-bold mt-0.5">256-Bit Encrypted</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Perforated bottom edge (receipt visual) */}
-            <div className="relative py-2 bg-white">
-              <div className="flex items-center justify-between px-3">
-                <div className="w-3.5 h-3.5 rounded-full bg-[#F5F7FA]"></div>
-                <div className="flex-1 flex justify-evenly">
-                  {[...Array(12)].map((_, i) => (
-                    <div key={i} className="w-2 h-0.5 rounded-full bg-[#e2e3e1]"></div>
-                  ))}
-                </div>
-                <div className="w-3.5 h-3.5 rounded-full bg-[#F5F7FA]"></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sticky Action Buttons */}
-          <div className="sticky bottom-2 mt-4 z-20 flex flex-col gap-2 p-2 rounded-2xl bg-white/95 backdrop-blur-md shadow-lg">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={handleDownload}
-                disabled={isDownloading}
-                className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-full bg-[#F7D61D] text-[#241a00] text-[15px] font-bold active:scale-[0.98] transition-transform shadow-sm disabled:opacity-80"
-              >
-                {isDownloading ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[20px]">download</span>
-                    Download PDF
-                  </>
-                )}
-              </button>
-              <button
-                onClick={handleShare}
-                className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-full bg-[#e8e8e6] text-[15px] font-bold active:scale-[0.98] transition-transform"
-              >
-                <span className="material-symbols-outlined text-[20px]">share</span>
-                Share Receipt
-              </button>
-            </div>
-            <div className="flex items-center justify-center gap-2 pt-1 pb-0.5 text-center">
-              <span className="material-symbols-outlined text-[#755b00] text-[15px]">help</span>
-              <span className="text-[13px] text-[#4e4634]">
-                Need help with this invoice?{" "}
-                <button className="font-semibold text-[#1a1c1b] underline hover:opacity-80">
-                  Contact Support
-                </button>
-              </span>
-            </div>
-          </div>
-
-        </div>
-      </main>
-
-      {/* ================= TOAST NOTIFICATION ================= */}
-      <div
-        className={`fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-full bg-[#2f3130] text-[#f1f1ef] text-[13px] font-semibold shadow-xl flex items-center gap-2 pointer-events-none transition-all duration-300 z-50 ${
-          toast.visible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-2"
-        }`}
-      >
-        <span className="material-symbols-outlined text-[18px] text-[#ffe08f]">check_circle</span>
-        <span>{toast.message}</span>
+function Status({ stage, animate, move, mins }) {
+  const label = statusLabels[stage].replace("{mins}", mins);
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <StatusIcon stage={stage} animate={animate} move={move} />
+      <div aria-live="polite" role="status" className="grid min-w-0 flex-1 items-center">
+        <AnimatePresence initial={false} mode="sync">
+          <motion.div
+            key={stage}
+            animate={{ opacity: 1, transform: "translateY(0px)" }}
+            initial={{ opacity: animate ? 0 : 1, transform: move ? "translateY(4px)" : "translateY(0px)" }}
+            exit={{ opacity: animate ? 0 : 1, transform: move ? "translateY(-4px)" : "translateY(0px)" }}
+            transition={{ duration: animate ? 0.18 : 0, ease: easeOut }}
+            className="col-start-1 row-start-1 truncate text-xs font-semibold leading-none text-[#0C831F]"
+          >
+            {label}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
 }
+
+function Dashed() {
+  return <div className="my-3 border-t border-dashed border-[#1F1F1F]/30" />;
+}
+
+function BillRow({ label, value, strike, free }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-[#666]">{label}</span>
+      <span className="flex items-baseline gap-1.5">
+        {strike && <span className="text-[#666] line-through">{strike}</span>}
+        <span className={free ? "font-bold text-[#0C831F]" : undefined}>{value}</span>
+      </span>
+    </div>
+  );
+}
+
+// ---------- Component ----------
+const BlinkitPrinter = forwardRef(function BlinkitPrinter(
+  {
+    stage: controlledStage,
+    autoPlay = false,
+    showPrintButton = true,
+    animate = true,
+    items = defaultItems,
+    orderId = "ORD-2048",
+    date = "11 AUG 2026 · 14:32",
+    deliveredTo = "Home",
+    paidWith = "UPI •••• 4242",
+    deliveryMinutes = 9,
+    deliveryFee = 0,
+    deliveryFeeStrike = 25,
+    handlingFee = 4,
+    savings = 50,
+    className,
+    onComplete,
+  },
+  ref,
+) {
+  const reduceMotion = useReducedMotion();
+  const move = animate && !reduceMotion;
+  const location = useLocation();
+  const routeOrder = location.state?.order || null;
+
+  const effItems = routeOrder?.items
+    ? routeOrder.items.map((it) => ({ name: it.name, unit: it.unit, qty: it.qty, price: it.price }))
+    : items;
+  const effOrderId = routeOrder ? `ORD-${routeOrder.id}` : orderId;
+  const effDate = routeOrder?.placedAt
+    ? new Date(routeOrder.placedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ' · ' +
+      new Date(routeOrder.placedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    : date;
+  const effDeliveredTo = routeOrder?.address ? routeOrder.address : deliveredTo;
+  const effPaidWith = routeOrder?.payment || paidWith;
+  const effDeliveryFee = routeOrder?.deliveryFee ?? deliveryFee;
+  const effHandlingFee = routeOrder?.handlingFee ?? handlingFee;
+  const effSavings = routeOrder?.discount ?? savings;
+
+  const [internalStage, setInternalStage] = useState("processing");
+  const stage = controlledStage ?? internalStage;
+  const isControlled = controlledStage !== undefined;
+
+  const timers = useRef([]);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  const downloadPDF = () => {
+    const pdf = new jsPDF('p', 'mm', [80, 200]);
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 4;
+    let y = 5;
+
+    pdf.setFontSize(11);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('blinkit', margin, y);
+    pdf.setFontSize(7);
+    pdf.setFont(undefined, 'normal');
+    pdf.text('Invoice', pageWidth - margin, y, { align: 'right' });
+    y += 7;
+
+    pdf.setFontSize(6.5);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Order: ${effOrderId}`, margin, y);
+    pdf.text(`Date: ${effDate}`, margin, y + 3.5);
+    pdf.text(`Delivered to: ${effDeliveredTo}`, margin, y + 7);
+    pdf.text(`Paid via: ${effPaidWith}`, margin, y + 10.5);
+    y += 15;
+
+    pdf.setDrawColor(0, 0, 0);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 3;
+
+    pdf.setFontSize(6.5);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Item', margin, y);
+    pdf.text('Qty', pageWidth - margin - 20, y, { align: 'right' });
+    pdf.text('Amount', pageWidth - margin, y, { align: 'right' });
+    y += 4;
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 3;
+
+    pdf.setFont(undefined, 'normal');
+    for (const item of effItems) {
+      pdf.text(item.name, margin, y, { maxWidth: pageWidth - margin - 35 });
+      pdf.text(`${item.qty}\u00d7`, pageWidth - margin - 25, y, { align: 'right' });
+      pdf.text(rupee(item.qty * item.price), pageWidth - margin, y, { align: 'right' });
+      y += 4.5;
+    }
+
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 4;
+
+    pdf.setFontSize(6.5);
+    pdf.setFont(undefined, 'normal');
+    pdf.text('Item total', margin, y);
+    pdf.text(rupee(itemTotal), pageWidth - margin, y, { align: 'right' });
+    y += 3.5;
+    pdf.text('Delivery charge', margin, y);
+    pdf.text(effDeliveryFee === 0 ? 'FREE' : rupee(effDeliveryFee), pageWidth - margin, y, { align: 'right' });
+    y += 3.5;
+    pdf.text('Handling charge', margin, y);
+    pdf.text(rupee(effHandlingFee), pageWidth - margin, y, { align: 'right' });
+    y += 5;
+
+    pdf.setFillColor(247, 214, 29);
+    pdf.rect(margin, y, pageWidth - 2 * margin, 7, 'F');
+    pdf.setFontSize(7);
+    pdf.setFont(undefined, 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('Grand total', margin + 2, y + 3);
+    pdf.text(rupee(grandTotal), pageWidth - margin - 2, y + 3, { align: 'right' });
+    y += 11;
+
+    if (effSavings > 0) {
+      pdf.setFillColor(232, 245, 234);
+      pdf.rect(margin, y, pageWidth - 2 * margin, 6, 'F');
+      pdf.setFontSize(6.5);
+      pdf.setFont(undefined, 'bold');
+      pdf.setTextColor(12, 131, 31);
+      pdf.text(`You saved ${rupee(effSavings)} on this order`, margin + 2, y + 3.5);
+      y += 9;
+    }
+
+    pdf.save(`invoice-${effOrderId.replace('ORD-', '')}.pdf`);
+  };
+
+  const clear = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+  };
+
+  const replay = useCallback(() => {
+    clear();
+    setInternalStage("processing");
+    timers.current.push(setTimeout(() => setInternalStage("printing"), 800));
+    timers.current.push(
+      setTimeout(() => {
+        setInternalStage("complete");
+        onCompleteRef.current?.();
+      }, 3000),
+    );
+  }, []);
+
+  useImperativeHandle(ref, () => ({ replay }), [replay]);
+
+  useEffect(() => {
+    if (autoPlay && !isControlled) replay();
+    return clear;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const itemTotal = effItems.reduce((s, i) => s + i.qty * i.price, 0);
+  const itemCount = effItems.reduce((s, i) => s + i.qty, 0);
+  const grandTotal = itemTotal + effDeliveryFee + effHandlingFee;
+
+  const showPaper = stage !== "processing";
+  const isPrinting = stage === "printing";
+
+  return (
+    <section
+      aria-label="Blinkit Invoice printer"
+      data-stage={stage}
+      className={cn("relative isolate flex w-full max-w-sm flex-col items-center mx-auto mt-12", className)}
+    >
+      {/* ============ PRINTER BODY ============ */}
+      <div className="relative z-30 w-full">
+        <div
+          className="relative isolate w-full rounded-3xl border border-[#E6BF00] bg-[#F7D61D] p-3 pb-9 shadow-[0_18px_30px_-16px_rgba(12,131,31,0.55),0_4px_10px_-6px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-2px_0_rgba(0,0,0,0.12)]"
+        >
+          {/* top vents */}
+          
+
+          {/* header */}
+          <div className="relative z-10 mt-1 flex h-11 items-start justify-between">
+            <Wordmark className="mt-1 ml-1 text-2xl" />
+            {showPrintButton && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isControlled) {
+                    replay();
+                    setTimeout(downloadPDF, 3500);
+                  }
+                }}
+                disabled={isControlled}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#0C831F] px-3 text-xs font-semibold text-white shadow-[0_2px_0_#064012] transition hover:bg-[#0a6e1a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F1F1F] active:translate-y-0.5 active:shadow-none disabled:opacity-60"
+              >
+                <PrinterIcon size={13} weight="fill" />
+               Download Invoice
+              </button>
+            )}
+          </div>
+
+          {/* screen */}
+          <div className="relative z-10 isolate overflow-hidden max-h-[26rem] rounded-[0.75rem] border border-[#E6BF00] bg-white p-4 text-[#1F1F1F] shadow-inner after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-[inherit] after:shadow-[inset_0_0_24px_4px_rgba(247,214,29,0.45)] after:content-['']">
+            <div className="relative z-10 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">Your order</p>
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-[#666]">
+                    <LightningIcon size={12} weight="fill" className="text-[#0C831F]" />
+                    {itemCount} items · 10 min delivery
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs text-[#666]">To pay</p>
+                  <p className="mt-0.5 text-base font-extrabold leading-none text-[#0C831F]">{rupee(grandTotal)}</p>
+                </div>
+              </div>
+              <Status stage={stage} animate={animate} move={move} mins={deliveryMinutes} />
+            </div>
+          </div>
+
+          {/* status LED */}
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute right-7 bottom-3 size-1.5 rounded-full transition-colors duration-200",
+              isPrinting
+                ? "bg-[#0C831F] shadow-[0_0_6px_2px_rgba(12,131,31,0.7)] motion-safe:animate-pulse"
+                : stage === "complete"
+                  ? "bg-[#0C831F]/80"
+                  : "bg-black/25",
+            )}
+          />
+        </div>
+
+        {/* paper slot mouth — straddles the bottom edge so paper exits through it */}
+        <div
+          aria-hidden="true"
+          className="absolute left-1/2 -bottom-[-8px] z-40 h-3 w-[calc(80%+20px)] -translate-x-1/2 rounded-[4px] border border-[#064012] bg-[#0A5F17] shadow-[inset_0_3px_4px_rgba(0,0,0,0.6),0_2px_3px_rgba(0,0,0,0.2)]"
+        />
+      </div>
+
+      {/* ============ PAPER (hangs down through the slot mouth) ============ */}
+      <div className="relative z-80 mt-[-15px] w-[calc(80%+16px)] overflow-hidden px-2 pb-3">
+        <img
+    className="absolute inset-0 z-0 h-full w-full object-contain  mix-blend-multiply"
+    src={Invoice}
+    alt="Invoice"
+  />
+        <motion.div
+          initial={false}
+          aria-hidden={stage !== "complete"}
+          animate={{
+            opacity: showPaper ? 1 : 0,
+            transform: isPrinting && move ? feedTransforms : showPaper || !move ? "translateY(0%)" : "translateY(-100%)",
+          }}
+          transition={{
+            opacity: { duration: animate ? 0.16 : 0, ease: easeOut },
+            transform: {
+              duration: move ? 1.75 : 0,
+              ease: isPrinting && move ? "linear" : easeInOut,
+              times: isPrinting && move ? feedTimes : undefined,
+            },
+          }}
+          style={{ filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.18))" }}
+           className="relative z-10"
+        >
+          
+          <article
+            className="relative bg-white px-6 pb-8 font-mono text-[#1F1F1F]"
+            style={{ clipPath: receiptClipPath }}
+          >
+            {/* shadow cast by the slot lip onto the paper */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-black/25 to-transparent"
+            />
+
+            {/* brand band */}
+            <div className="-mx-6 mb-4 flex items-center justify-between bg-[#F7D61D] px-6 pt-5 pb-3">
+              <Wordmark className="text-xl" />
+              {/* <span className="inline-flex items-center gap-1 rounded-full bg-[#0C831F] px-2 py-1 text-[8px] font-bold leading-none text-white">
+                <LightningIcon size={9} weight="fill" />
+                {deliveryMinutes} min
+              </span> */}
+            </div>
+
+            {/* meta */}
+            <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-[9px] leading-3">
+              <span className="text-[#666]">Order ID</span>
+              <span>{effOrderId}</span>
+              <span className="text-[#666]">Date</span>
+              <span>{effDate}</span>
+              <span className="text-[#666]">Delivered to</span>
+              <span>{effDeliveredTo}</span>
+              <span className="text-[#666]">Paid via</span>
+              <span>{effPaidWith}</span>
+            </div>
+
+            <Dashed />
+
+            {/* items */}
+            <div className="flex flex-col gap-2 text-[9px] leading-3">
+              {effItems.map((item) => (
+                <div key={item.name} className="grid grid-cols-[auto_1fr_auto] gap-x-2">
+                  <span className="font-bold text-[#0C831F]">{item.qty}×</span>
+                  <span className="min-w-0">
+                    <span className="block truncate">{item.name}</span>
+                    <span className="text-[#666]">{item.unit}</span>
+                  </span>
+                  <span>{rupee(item.qty * item.price)}</span>
+                </div>
+              ))}
+            </div>
+
+            <Dashed />
+
+            {/* bill */}
+            <div className="flex flex-col gap-1 text-[9px] leading-3">
+              <BillRow label="Item total" value={rupee(itemTotal)} />
+              <BillRow
+                label="Delivery charge"
+                strike={effDeliveryFee === 0 && deliveryFeeStrike ? rupee(deliveryFeeStrike) : undefined}
+                value={effDeliveryFee === 0 ? "FREE" : rupee(effDeliveryFee)}
+                free={effDeliveryFee === 0}
+              />
+              <BillRow label="Handling charge" value={rupee(effHandlingFee)} />
+            </div>
+
+            <div className="mt-3 flex items-baseline justify-between rounded-md bg-[#F7D61D] px-2 py-2">
+              <span className="text-[10px] font-extrabold">Grand total</span>
+              <span className="text-xs font-extrabold">{rupee(grandTotal)}</span>
+            </div>
+
+            {effSavings > 0 && (
+              <div className="mt-3 rounded-md bg-[#E8F5EA] px-2 py-2 text-center text-[9px] font-bold leading-3 text-[#0C831F]">
+                You saved {rupee(effSavings)} on this order
+              </div>
+            )}
+
+            {/* barcode */}
+            <div className="mt-5 text-center">
+              <div className="mx-auto h-7 w-32 bg-[repeating-linear-gradient(90deg,currentColor_0_1px,transparent_1px_3px,currentColor_3px_5px,transparent_5px_7px,currentColor_7px_8px,transparent_8px_11px)]" />
+              <p className="mt-1 text-[7px] tracking-[0.18em] text-[#666]">{effOrderId.replace("-", " ")}</p>
+            </div>
+
+            <p className="mt-4 text-center text-[9px] font-bold leading-3">
+              Thank you for ordering on blink<span className="text-[#0C831F]">it</span>
+            </p>
+          </article>
+        </motion.div>
+      </div>
+    </section>
+  );
+});
+
+export default BlinkitPrinter;

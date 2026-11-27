@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import OrderProgress from '../components/OrderProgress.jsx';
 import { getMyOrdersAPI } from '../services/orderplaceService.js';
+import socket, { connectSocket } from '../socket.js';
 
 export default function OrderSummaryReceipt() {
   const navigate = useNavigate();
@@ -72,9 +73,21 @@ export default function OrderSummaryReceipt() {
 
     refreshStatus();
     const interval = setInterval(refreshStatus, 15000);
+
+    connectSocket();
+    const onStatusUpdate = ({ order }) => {
+      if (!active || !order) return;
+      const updatedId = order.orderId || order._id;
+      if (updatedId === orderId && order.orderStatus) {
+        setLiveOrderStatus(order.orderStatus);
+      }
+    };
+    socket.on('order_status_updated', onStatusUpdate);
+
     return () => {
       active = false;
       clearInterval(interval);
+      socket.off('order_status_updated', onStatusUpdate);
     };
   }, [orderId, liveOrderStatus]);
 
@@ -142,7 +155,17 @@ const handleDownloadInvoice = () => {
   setIsDownloading(true);
 
   setTimeout(() => {
-    navigate('/Receipt');
+    const receiptOrder = {
+      id: orderId,
+      items: items.map((it) => ({ name: it.name, unit: it.unit || '', qty: it.qty, price: it.basePrice ?? it.price })),
+      placedAt: new Date().toISOString(),
+      payment: payment?.methodLabel || 'UPI',
+      deliveryFee,
+      handlingFee,
+      discount: savedAmount,
+      address: addressText || 'Home',
+    };
+    navigate('/Receipt', { state: { order: receiptOrder } });
     setIsDownloading(false);
   }, 3000); 
 };
@@ -180,9 +203,7 @@ const handleDownloadInvoice = () => {
             <button aria-label="Customer Support" className="w-10 h-10 flex items-center justify-center rounded-full text-black hover:bg-[#F7D61D]/30 transition-colors" type="button">
               <span className="material-symbols-outlined text-[22px]">help_outline</span>
             </button>
-            <div className="w-8 h-8 shrink-0 rounded-full bg-[#F7D61D] flex items-center justify-center">
-              <span className="material-symbols-outlined text-black text-[18px]">person</span>
-            </div>
+            
           </div>
 
         </div>
@@ -316,7 +337,7 @@ const handleDownloadInvoice = () => {
               )}
               <div className="flex justify-between items-center text-[15px] text-[#121c2a] pt-1">
                 <span className="font-semibold">Total Paid</span>
-                <span className="font-semibold text-[#F7D61D]">₹{total}</span>
+                <span className="font-semibold text-[#fffff]">₹{total}</span>
               </div>
             </div>
           </div>
@@ -381,8 +402,8 @@ const handleDownloadInvoice = () => {
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[20px]">receipt_long</span>
-                  <span>Download Invoice</span>
+                  <span className="material-symbols-outlined text-[20px] text-black">receipt_long</span>
+                  <span className="text-[14px] font-semibold text-black">Download Invoice</span>
                 </>
               )}
             </button>

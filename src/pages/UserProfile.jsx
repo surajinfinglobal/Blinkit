@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMyOrdersAPI } from "../services/orderplaceService.js";
 import { getUserProfile } from '../services/api';
 import { getAddressesAPI } from '../services/addressService.js';
+import { disconnectSocket } from '../socket.js';
 
 /* ================= CONFIG / DUMMY DATA ================= */
 
@@ -755,6 +756,7 @@ export default function UserProfile() {
   };
 
   const executeLogout = () => {
+    disconnectSocket();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setShowLogoutModal(false);
@@ -875,7 +877,7 @@ export default function UserProfile() {
           </ul>
         </section>
 
-        <p className="mt-5 text-center text-xs text-gray-400">Version 1.0.0</p>
+        <p className="mt-5 text-center text-xs text-gray-400">Design and Development by Suraj</p>
       </main>
 
       {/* ================= Sheets ================= */}

@@ -8,6 +8,9 @@ const addressRoutes = require('./routes/address');
 const authRoutes = require(path.join(__dirname, 'routes', 'authRoutes'))
 const adminOrderRoutes = require("./routes/adminOrderRoutes");
 const favoriteRoutes = require('./routes/favorites');
+const http = require("http");
+const { Server } = require("socket.io");
+const jwt = require('jsonwebtoken');
 
 
 
@@ -18,7 +21,15 @@ app.use(
     origin: clientUrl,
   })
 )
-app.use(express.json())
+app.use(express.json());
+const server = http.createServer( app);
+const io = new Server(server, {
+  cors: {
+    origin: clientUrl,
+     methods: ["GET", "POST"]
+  }
+});
+app.set('io', io);
 app.get('/', (req, res) => {
   res.json({ message: 'Blinkit API is running!' })
 })
@@ -35,6 +46,41 @@ app.use("/api/admin", adminOrderRoutes);
 app.use('/api', favoriteRoutes);
 
 app.use('/api/auth', authRoutes)
+
+io.on("connection", (socket) => {
+  console.log("A user connected: " + socket.id);
+
+  socket.on("join_user_room", (payload = {}) => {
+    const token = payload.token || socket.handshake.auth?.token;
+    if (!token) return;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded?.userId) {
+        socket.join(`user:${decoded.userId}`);
+      }
+    } catch (error) {
+      console.error("Socket auth failed:", error.message);
+    }
+  });
+
+  socket.on("join_admin_room", (payload = {}) => {
+    const token = payload.token || socket.handshake.auth?.token;
+    if (!token) return;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded?.id && !decoded?.userId) {
+        socket.join("admin:orders");
+      }
+    } catch (error) {
+      console.error("Socket admin auth failed:", error.message);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected: " + socket.id);
+  });
+});
+// use server.listen instead of app.listen to allow socket.io to work
 async function startServer() {
   try {
     await mongoose.connect(process.env.MONGO_URI)
@@ -43,7 +89,7 @@ async function startServer() {
 
     console.log('MongoDB connected successfully')
 
-    app.listen(process.env.PORT || 5000, () => {
+    server.listen(process.env.PORT || 5000, () => {
       console.log(`Server running on port ${process.env.PORT || 5000}`)
     })
   } catch (error) {

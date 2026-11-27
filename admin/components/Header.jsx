@@ -1,9 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "./Toast";
 
-export default function Header({ onMenu, onSearch, admin, onLogout }) {
+export default function Header({ onMenu, onSearch, admin, onLogout, notifications = [], onMarkNotificationsRead }) {
   const notify = useToast();
   const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const unread = notifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, []);
 
   const submit = (e) => {
     e.preventDefault();
@@ -32,10 +41,45 @@ export default function Header({ onMenu, onSearch, admin, onLogout }) {
 
       <div className="flex items-center gap-space-md">
         <div className="flex items-center gap-1 rounded-full bg-surface-container-low p-1">
-          <button type="button" aria-label="Notifications" onClick={() => notify("No new alerts", "notifications")} className="bell-ring relative flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-all hover:bg-surface-container-high hover:text-on-surface active:scale-90">
-            <span className="material-symbols-outlined text-[18px]">notifications</span>
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-error ring-2 ring-surface-container-low" />
-          </button>
+          <div className="relative" ref={ref}>
+            <button
+              type="button"
+              aria-label="Notifications"
+              onClick={() => {
+                const next = !open;
+                setOpen(next);
+                if (next && onMarkNotificationsRead) onMarkNotificationsRead();
+              }}
+              className="bell-ring relative flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-all hover:bg-surface-container-high hover:text-on-surface active:scale-90"
+            >
+              <span className="material-symbols-outlined text-[18px]">notifications</span>
+              {unread > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-error ring-2 ring-surface-container-low" />}
+            </button>
+            {open && (
+              <div className="absolute right-0 top-11 z-50 w-80 overflow-hidden rounded-2xl bg-surface-container-lowest shadow-xl ring-1 ring-black/5">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="font-label-md text-label-md font-bold">Notifications</span>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">{notifications.length}</span>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="px-4 pb-4 font-body-sm text-body-sm text-on-surface-variant">No notifications yet</p>
+                  ) : notifications.map((n) => (
+                    <div key={n.id} className="border-t border-surface-container px-4 py-3">
+                      <div className="flex items-start gap-2">
+                        <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-primary"}`} />
+                        <div className="min-w-0">
+                          <p className="font-label-sm text-label-sm font-bold text-on-surface">{n.title}</p>
+                          <p className="font-body-sm text-body-sm text-on-surface-variant">{n.message}</p>
+                          <p className="mt-0.5 font-label-sm text-[11px] text-on-surface-variant">{new Date(n.at).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <button type="button" aria-label="Quick actions" onClick={() => notify("Quick actions coming soon", "bolt")} className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-all hover:bg-surface-container-high hover:text-on-surface active:scale-90">
             <span className="material-symbols-outlined text-[18px]">bolt</span>
           </button>
