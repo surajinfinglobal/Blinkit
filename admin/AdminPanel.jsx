@@ -25,6 +25,7 @@ import {
   getAdminAuthHeaders,
   getCurrentAdmin,
 } from "./services/adminAuthService";
+import adminSocket, { disconnectAdminSocket } from "./services/adminSocket";
 
 function AdminShell({ admin, onLogout }) {
   const notify = useToast();
@@ -85,6 +86,8 @@ function AdminShell({ admin, onLogout }) {
           onLogout={onLogout}
           onMenu={() => setSidebarOpen(true)}
           onSearch={onGlobalSearch}
+          notifications={data.adminNotifications}
+          onMarkNotificationsRead={data.markAllAdminNotificationsRead}
         />
         <main className="w-full bg-surface px-space-md py-space-lg pt-[88px] lg:px-space-lg">
           {/* key = section → har navigation par smooth enter animation */}
@@ -130,6 +133,7 @@ export default function AdminPanel() {
   }, []);
 
   const logout = () => {
+    disconnectAdminSocket();
     clearAdminSession();
     setAdmin(null);
   };

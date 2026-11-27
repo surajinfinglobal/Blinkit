@@ -136,6 +136,14 @@ exports.placeOrder = async (req, res) => {
       { $set: { items: [] } }
     );
 
+    const io = req.app.get("io");
+    if (io) {
+      const populated = await Order.findById(order._id)
+        .populate("userId", "fullName phone email")
+        .populate("assignedRider", "name phone status vehicle hub");
+      io.to("admin:orders").emit("admin:new_order", { order: populated || order });
+    }
+
     return res.status(201).json({
       success: true,
       message: "Order placed successfully",
@@ -199,6 +207,21 @@ exports.cancelorder = async (req, res)=>{
       order.refundAmount = order.billDetails.grandTotal;
     }
      await order.save();
+
+    const populated = await Order.findById(order._id)
+      .populate("userId", "fullName phone email")
+      .populate("assignedRider", "name phone status vehicle hub");
+    const io = req.app.get("io");
+    if (io) {
+      io.to("admin:orders").emit("admin:order_updated", {
+        order: populated || order,
+        action: "cancelled",
+      });
+      io.to(`user:${order.userId}`).emit("order_status_updated", {
+        order: populated || order,
+      });
+    }
+
     res.json({
        success: true,
       message: "Order cancelled successfully",

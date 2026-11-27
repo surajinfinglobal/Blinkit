@@ -1,15 +1,51 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { INITIAL_ORDERS, INITIAL_CUSTOMERS, ORDER_STATUSES } from "../data/adminData";
 import { getAllUsers } from "../services/userService";
 import { getAllOrders } from "../services/orderService";
 import { fetchRiders } from "../services/riderService";
 import { updateOrderStatusAPI,assignRiderAPI } from "../services/adminOrderService";
+import adminSocket, { connectAdminSocket } from "../services/adminSocket";
+
+const mapAdminOrder = (o, idx = 0) => {
+  const items = o.items || [];
+  const summary = items.slice(0, 3).map((i) => i.name).join(", ");
+  const total = o.billDetails?.grandTotal || 0;
+  const mins = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
+  return {
+    id: o.orderId || o._id?.slice(-6).toUpperCase() || `QC-${idx}`,
+    dbId: o._id,
+    mins: mins < 60 ? mins : Math.floor(mins / 60),
+    type: o.paymentMethod === "COD" ? "Standard" : "Express",
+    customer: {
+      name: o.userId?.fullName || "Customer",
+      phone: o.userId?.phone || "",
+      address: o.deliveryAddress?.line || "",
+    },
+    items: items.length,
+    summary: summary || (items.length + " items"),
+    total: total,
+    payment: o.paymentMethod === "COD" ? "Cash on Delivery" : "Online",
+    paid: o.paymentStatus === "paid",
+    status: ({
+      received: "pending",
+      pending: "pending",
+      packing: "packing",
+      out_for_delivery: "in-transit",
+      "in-transit": "in-transit",
+      delivered: "delivered",
+      cancelled: "cancelled",
+    })[o.orderStatus || o.status] || "pending",
+    riderId: o.assignedRider?._id || o.assignedRider || o.riderId || null,
+    eta: null,
+  };
+};
 
 export default function useAdminData(notify) {
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
+  const [orders, setOrders] = useState([]);
   const [riders, setRiders] = useState([]);
   const [loadingRiders, setLoadingRiders] = useState(true);
   const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
+  const [adminNotifications, setAdminNotifications] = useState([]);
 
    useEffect(() => {
     const loadRiders = async () => {
@@ -79,40 +115,7 @@ export default function useAdminData(notify) {
       try {
         const dbOrders = await getAllOrders();
         if (Array.isArray(dbOrders)) {
-          const mapped = dbOrders.map((o, idx) => {
-            const items = o.items || [];
-            const summary = items.slice(0, 3).map((i) => i.name).join(", ");
-            const total = o.billDetails?.grandTotal || 0;
-            const mins = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
-            return {
-              id: o.orderId || o._id?.slice(-6).toUpperCase() || `QC-${idx}`,
-              dbId: o._id,
-              mins: mins < 60 ? mins : Math.floor(mins / 60),
-              type: o.paymentMethod === "COD" ? "Standard" : "Express",
-              customer: {
-                name: o.userId?.fullName || "Customer",
-                phone: o.userId?.phone || "",
-                address: o.deliveryAddress?.line || "",
-              },
-              items: items.length,
-              summary: summary || (items.length + " items"),
-              total: total,
-              payment: o.paymentMethod === "COD" ? "Cash on Delivery" : "Online",
-              paid: o.paymentStatus === "paid",
-              status: ({
-                received: "pending",
-                pending: "pending",
-                packing: "packing",
-                out_for_delivery: "in-transit",
-                "in-transit": "in-transit",
-                delivered: "delivered",
-                cancelled: "cancelled",
-              })[o.orderStatus || o.status] || "pending",
-              riderId: o.assignedRider?._id || o.assignedRider || o.riderId || null,
-              eta: null,
-            };
-          });
-          setOrders(mapped);
+          setOrders(dbOrders.map((o, idx) => mapAdminOrder(o, idx)));
         }
       } catch (error) {
         console.error("Failed to load orders", error);
@@ -120,6 +123,46 @@ export default function useAdminData(notify) {
       }
     };
     fetchOrders();
+  }, [notify]);
+
+  useEffect(() => {
+    connectAdminSocket();
+    const pushNotification = (n) =>
+      setAdminNotifications((prev) => [{ id: `${Date.now()}-${Math.random()}`, read: false, at: Date.now(), ...n }, ...prev].slice(0, 30));
+
+    const onNew = ({ order }) => {
+      if (!order) return;
+      const mapped = mapAdminOrder(order);
+      setOrders((prev) => {
+        const exists = prev.some((o) => o.dbId === mapped.dbId || o.id === mapped.id);
+        if (exists) return prev.map((o) => (o.dbId === mapped.dbId ? mapped : o));
+        return [mapped, ...prev];
+      });
+      pushNotification({ type: "new", title: "New order", message: `#${mapped.id} from ${mapped.customer?.name || "Customer"}` });
+      notify(`New order #${mapped.id}`, "shopping_bag");
+    };
+    const onUpdated = ({ order, action }) => {
+      if (!order) return;
+      const mapped = mapAdminOrder(order);
+      setOrders((prev) => {
+        const exists = prev.some((o) => o.dbId === mapped.dbId || o.id === mapped.id);
+        if (!exists) return [mapped, ...prev];
+        return prev.map((o) => (o.dbId === mapped.dbId ? { ...o, ...mapped } : o));
+      });
+      if (action === "cancelled") {
+        pushNotification({ type: "cancelled", title: "Order cancelled", message: `#${mapped.id} was cancelled by user` });
+        notify(`Order #${mapped.id} cancelled by user`, "cancel");
+      } else {
+        pushNotification({ type: "status", title: "Order updated", message: `#${mapped.id} status changed to ${mapped.status}` });
+      }
+    };
+
+    adminSocket.on("admin:new_order", onNew);
+    adminSocket.on("admin:order_updated", onUpdated);
+    return () => {
+      adminSocket.off("admin:new_order", onNew);
+      adminSocket.off("admin:order_updated", onUpdated);
+    };
   }, [notify]);
 
   const freeRider = (riderId, delivered = false) =>
@@ -238,8 +281,13 @@ export default function useAdminData(notify) {
     return rider;
   };
 
+  const markAllAdminNotificationsRead = useCallback(() => {
+    setAdminNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
   return {
     orders, riders, customers, loadingRiders,
+    adminNotifications, markAllAdminNotificationsRead,
     changeOrderStatus, cancelOrder, assignOrderToRider, addRider,
     extraRiders: riders.length,
   };

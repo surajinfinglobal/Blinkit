@@ -1,9 +1,15 @@
 import { API_BASE_URL } from './apiConfig.js';
+import { disconnectSocket } from '../socket.js';
 
 function handleUnauthorized() {
   // Clear token and redirect to login/phone
   try {
     localStorage.removeItem('token');
+  } catch (e) {
+    // ignore
+  }
+  try {
+    disconnectSocket();
   } catch (e) {
     // ignore
   }

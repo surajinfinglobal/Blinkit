@@ -7,6 +7,7 @@ import OrderProgress from '../components/OrderProgress.jsx';
 import {getMyOrdersAPI,cancelOrderAPI} from "../services/orderplaceService.js"
 import NoOrder from '../assets/Blinkit _No_ Orders.png'
 import { addToCart, updateCartQuantity } from '../services/cartService';
+import socket, { connectSocket } from '../socket.js';
 
 /* ================= CONFIG ================= */
 
@@ -935,6 +936,51 @@ export default function MyOrders() {
     const id = setInterval(() => setReloadOrders((attempt) => attempt + 1), 60000);
     return () => clearInterval(id);
   }, [hasOngoing]);
+
+  useEffect(() => {
+    connectSocket();
+    const onStatusUpdate = ({ order }) => {
+      if (!order) return;
+      const orderId = order.orderId || order._id;
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id !== orderId && o.id !== order._id) return o;
+          const rawStatus = order.orderStatus || o.rawStatus;
+          const status = {
+            received: 'ongoing',
+            packing: 'ongoing',
+            out_for_delivery: 'ongoing',
+            delivered: 'delivered',
+            cancelled: 'cancelled',
+          }[rawStatus] || o.status;
+          const rider = order.assignedRider;
+          return {
+            ...o,
+            rawStatus,
+            status,
+            paymentStatus: order.paymentStatus ?? o.paymentStatus,
+            deliveredInMins:
+              status === 'delivered' && o.status !== 'delivered'
+                ? Math.max(1, Math.round((Date.now() - o.placedAt) / MIN))
+                : o.deliveredInMins,
+            rider: rider
+              ? {
+                  name: rider.name || o.rider?.name || 'Not assigned',
+                  rating: o.rider?.rating || '—',
+                  phone: rider.phone || o.rider?.phone || '',
+                }
+              : o.rider,
+          };
+        })
+      );
+      showToast(`Order #${orderId} status updated`);
+    };
+
+    socket.on('order_status_updated', onStatusUpdate);
+    return () => {
+      socket.off('order_status_updated', onStatusUpdate);
+    };
+  }, []);
 
   const updateOrder = (id, patch) =>
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...(typeof patch === 'function' ? patch(o) : patch) } : o)));

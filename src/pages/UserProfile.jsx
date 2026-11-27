@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMyOrdersAPI } from "../services/orderplaceService.js";
 import { getUserProfile } from '../services/api';
 import { getAddressesAPI } from '../services/addressService.js';
+import { disconnectSocket } from '../socket.js';
 
 /* ================= CONFIG / DUMMY DATA ================= */
 
@@ -755,6 +756,7 @@ export default function UserProfile() {
   };
 
   const executeLogout = () => {
+    disconnectSocket();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setShowLogoutModal(false);

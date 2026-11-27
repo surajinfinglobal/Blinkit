@@ -169,7 +169,11 @@ const OTPVerification = () => {
       console.log("Login Successful:", data);
       
       // Token aur user details save karo
-      if (data.token) localStorage.setItem('token', data.token);
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        const { connectSocket } = await import('../socket.js');
+        connectSocket();
+      }
       if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       
       // Success par hi navigate karo

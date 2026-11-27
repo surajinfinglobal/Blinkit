@@ -3,9 +3,9 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const mongoose = require('mongoose');
-const protect = require('../middleware/authMiddleware'); 
+const authMiddleware = require('../middleware/authMiddleware'); 
 
-router.post('/addresses', protect, async (req, res) => {
+router.post('/addresses', authMiddleware, async (req, res) => {
      console.log('📥 Received address:', req.body); 
   console.log('👤 User ID:', req.user?.id); 
      try {
@@ -58,7 +58,7 @@ router.post('/addresses', protect, async (req, res) => {
   }
 });
 
-router.get('/addresses', protect, async (req, res) => {
+router.get('/addresses', authMiddleware, async (req, res) => {
      try {
     const user = await User.findById(req.user.id).select('addresses');
 
@@ -81,7 +81,7 @@ router.get('/addresses', protect, async (req, res) => {
 });
 
 // for delete address 
-router.delete('/addresses/:addressId', protect, async (req, res) => {
+router.delete('/addresses/:addressId', authMiddleware, async (req, res) => {
    try {
     const { addressId } = req.params;
 

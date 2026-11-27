@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import OrderProgress from '../components/OrderProgress.jsx';
 import { getMyOrdersAPI } from '../services/orderplaceService.js';
+import socket, { connectSocket } from '../socket.js';
 
 export default function OrderSummaryReceipt() {
   const navigate = useNavigate();
@@ -72,9 +73,21 @@ export default function OrderSummaryReceipt() {
 
     refreshStatus();
     const interval = setInterval(refreshStatus, 15000);
+
+    connectSocket();
+    const onStatusUpdate = ({ order }) => {
+      if (!active || !order) return;
+      const updatedId = order.orderId || order._id;
+      if (updatedId === orderId && order.orderStatus) {
+        setLiveOrderStatus(order.orderStatus);
+      }
+    };
+    socket.on('order_status_updated', onStatusUpdate);
+
     return () => {
       active = false;
       clearInterval(interval);
+      socket.off('order_status_updated', onStatusUpdate);
     };
   }, [orderId, liveOrderStatus]);
 
